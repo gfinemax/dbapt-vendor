@@ -44,7 +44,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
     project: {
       id: project.id, title: project.title, category: project.category, description: project.description, budget: project.budget, stage: project.stage,
       ownerName: project.owner_user_id ? ownerMap.get(project.owner_user_id) ?? null : null,
-      boardResolution: project.board_resolution, selectedVendorName: project.selected_vendor_id ? vendorMap.get(project.selected_vendor_id) ?? null : null,
+      boardResolution: project.board_resolution, selectedVendorId: project.selected_vendor_id, selectedVendorName: project.selected_vendor_id ? vendorMap.get(project.selected_vendor_id) ?? null : null,
       selectionReason: project.selection_reason, internalNote,
     },
     participants: (linksResult.data ?? []).flatMap((link) => { const name = vendorMap.get(link.vendor_id); return name ? [{ id: link.vendor_id, name, role: link.role }] : []; }),
@@ -54,6 +54,7 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
     events: eventsResult.data ?? [],
     documents: (documentsResult.data ?? []).map((document) => ({ id: document.id, kind: document.kind, fileName: document.file_name, version: document.version, createdAt: document.created_at })),
     canCreateQuote: role === "admin" || role === "staff" || role === "agent",
+    canManageContracts: role === "admin" || role === "staff" || role === "agent",
     canSelect: role === "admin" || role === "executive",
     defaultTab: query.tab ?? "overview",
   };

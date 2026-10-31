@@ -1355,6 +1355,25 @@ export type Database = {
       }
     }
     Functions: {
+      create_contract_with_payments: {
+        Args: {
+          amount_value: number
+          change_reason_value?: string | null
+          contract_party_value: string
+          end_at_value: string
+          is_sealed_value: boolean
+          original_location_value: string
+          parent_contract_id_value?: string | null
+          payment_rows?: Json
+          project_id_value: string
+          signed_at_value: string
+          start_at_value: string
+          title_value: string
+          vat_value: number
+          vendor_id_value: string
+        }
+        Returns: string
+      }
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
