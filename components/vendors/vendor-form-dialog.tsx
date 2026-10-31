@@ -1,13 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Pencil, Plus } from "lucide-react";
+import { Building2, FileText, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { toast } from "sonner";
 
-import { saveVendor } from "@/app/(main)/vendors/actions";
+import { createVendorDocument, saveVendor } from "@/app/(main)/vendors/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  allowedDocumentExtensions,
+  documentExtension,
+  MAX_DOCUMENT_SIZE,
+  safeDocumentFileName,
+} from "@/lib/documents";
+import { createClient } from "@/lib/supabase/client";
 import { vendorSchema, vendorStatuses, type VendorInput } from "@/lib/validators/vendor";
 
 const emptyVendor: VendorInput = {
@@ -51,8 +58,12 @@ export function VendorFormDialog({
   triggerLabel?: string;
 }) {
   const router = useRouter();
+  const quoteInputRef = useRef<HTMLInputElement>(null);
+  const contractInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const [contractFile, setContractFile] = useState<File | null>(null);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(vendor?.id);
   const form = useForm<VendorInput>({
@@ -64,12 +75,70 @@ export function VendorFormDialog({
     if (open) {
       form.reset(vendor ?? emptyVendor);
       setSubmitError(null);
+      setQuoteFile(null);
+      setContractFile(null);
+      if (quoteInputRef.current) quoteInputRef.current.value = "";
+      if (contractInputRef.current) contractInputRef.current.value = "";
     }
   }, [form, open, vendor]);
 
+  function validateDocument(file: File, label: string) {
+    if (!allowedDocumentExtensions.has(documentExtension(file.name))) {
+      return `${label}는 PDF·이미지·엑셀·워드·한글 파일만 올릴 수 있어.`;
+    }
+    if (file.size > MAX_DOCUMENT_SIZE) return `${label}는 20MB 이하여야 해.`;
+    return null;
+  }
+
+  async function uploadDocument(
+    vendorId: string,
+    kind: "견적서" | "계약서",
+    file: File,
+  ) {
+    const supabase = createClient();
+    const path = `vendor/${vendorId}/${kind}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from("vendor-files")
+      .upload(path, file, {
+        cacheControl: "3600",
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+    if (uploadError) throw new Error(`${kind}를 업로드하지 못했어: ${uploadError.message}`);
+
+    const registered = await createVendorDocument({
+      owner_id: vendorId,
+      kind,
+      file_path: path,
+      file_name: file.name,
+      mime_type: file.type,
+      file_size: file.size,
+      valid_until: "",
+    });
+    if (!registered.ok || !registered.id) {
+      await supabase.storage.from("vendor-files").remove([path]);
+      throw new Error(`${kind}를 등록하지 못했어: ${registered.message}`);
+    }
+
+    const response = await fetch(`/api/documents/${registered.id}/analyze`, {
+      method: "POST",
+    });
+    return response.ok;
+  }
+
   function onSubmit(values: VendorInput) {
+    const quoteError = quoteFile ? validateDocument(quoteFile, "견적서") : null;
+    const contractError = contractFile ? validateDocument(contractFile, "계약서") : null;
+    const documentError = quoteError ?? contractError;
+    if (documentError) {
+      setSubmitError(documentError);
+      toast.error(documentError);
+      return;
+    }
+
     setSubmitError(null);
     startTransition(async () => {
+      let vendorSaved = false;
       try {
         const result = await saveVendor(values);
         if (!result.ok) {
@@ -77,18 +146,67 @@ export function VendorFormDialog({
           toast.error(result.message);
           return;
         }
+        vendorSaved = true;
 
-        toast.success(result.message);
+        const selectedDocuments = editing && result.id
+          ? [
+              ...(quoteFile ? [{ kind: "견적서" as const, file: quoteFile }] : []),
+              ...(contractFile ? [{ kind: "계약서" as const, file: contractFile }] : []),
+            ]
+          : [];
+        const uploadResults = result.id
+          ? await Promise.allSettled(
+              selectedDocuments.map((document) =>
+                uploadDocument(result.id!, document.kind, document.file),
+              ),
+            )
+          : [];
+        const uploadErrors: string[] = [];
+        let analysisFailures = 0;
+        uploadResults.forEach((uploadResult, index) => {
+          const selected = selectedDocuments[index];
+          if (uploadResult.status === "rejected") {
+            uploadErrors.push(
+              uploadResult.reason instanceof Error
+                ? uploadResult.reason.message
+                : `${selected.kind} 등록 중 오류가 발생했어.`,
+            );
+            return;
+          }
+          if (!uploadResult.value) analysisFailures += 1;
+          if (selected.kind === "견적서") {
+            setQuoteFile(null);
+            if (quoteInputRef.current) quoteInputRef.current.value = "";
+          } else {
+            setContractFile(null);
+            if (contractInputRef.current) contractInputRef.current.value = "";
+          }
+        });
+        if (uploadErrors.length) throw new Error(uploadErrors.join(" "));
+
+        const uploadedCount = selectedDocuments.length;
+        toast.success(
+          uploadedCount
+            ? `${result.message} 견적서·계약서 ${uploadedCount}건도 등록했어.`
+            : result.message,
+        );
+        if (analysisFailures) {
+          toast.warning(`${analysisFailures}건은 원본을 등록했지만 자동 분석은 완료하지 못했어.`);
+        }
         setOpen(false);
         if (!editing && result.id) {
           router.push(`/vendors/${result.id}`);
         } else {
           router.refresh();
         }
-      } catch {
-        const message = "저장 요청을 처리하지 못했어. 잠시 후 다시 시도해 줘.";
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "문서 등록 중 오류가 발생했어.";
+        const message = vendorSaved
+          ? `업체 기본정보는 저장했지만 문서를 등록하지 못했어. ${detail}`
+          : "저장 요청을 처리하지 못했어. 잠시 후 다시 시도해 줘.";
         setSubmitError(message);
         toast.error(message);
+        if (vendorSaved) router.refresh();
       }
     });
   }
@@ -179,6 +297,44 @@ export function VendorFormDialog({
                 <FormItem><FormLabel>내부 검토의견</FormLabel><FormControl><Textarea placeholder="관리자·임원·사무국만 조회" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
+            {editing ? (
+              <section className="space-y-3 rounded-xl border bg-muted/30 p-4">
+                <div className="flex items-start gap-2">
+                  <FileText className="mt-0.5 size-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-semibold">견적서·계약서 등록</p>
+                    <p className="text-xs text-muted-foreground">
+                      파일을 선택하지 않으면 기존 문서는 그대로 유지돼. 등록한 문서는 서류 탭에서 확인할 수 있어.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium">
+                    견적서
+                    <Input
+                      ref={quoteInputRef}
+                      accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.xls,.xlsx,.csv,.doc,.docx,.hwp"
+                      disabled={pending}
+                      type="file"
+                      onChange={(event) => setQuoteFile(event.target.files?.[0] ?? null)}
+                    />
+                    {quoteFile ? <span className="truncate text-xs font-normal text-muted-foreground">{quoteFile.name}</span> : null}
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    계약서
+                    <Input
+                      ref={contractInputRef}
+                      accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.xls,.xlsx,.csv,.doc,.docx,.hwp"
+                      disabled={pending}
+                      type="file"
+                      onChange={(event) => setContractFile(event.target.files?.[0] ?? null)}
+                    />
+                    {contractFile ? <span className="truncate text-xs font-normal text-muted-foreground">{contractFile.name}</span> : null}
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">파일당 최대 20MB · 등록 후 주요 내용을 자동 분석해.</p>
+              </section>
+            ) : null}
             {submitError ? (
               <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                 {submitError}
