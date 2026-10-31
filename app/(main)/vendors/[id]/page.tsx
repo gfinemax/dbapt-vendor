@@ -20,8 +20,15 @@ function getKstDateParts() {
   return { date, dateTime: `${date}T${time}` };
 }
 
-export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VendorDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ googleSync?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const supabase = await createClient();
   const { data: role } = await supabase.rpc("current_role");
   const safeView = role === "agent" || role === "viewer";
@@ -219,6 +226,14 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       canSyncGoogleContacts={role === "admin"}
       googleContactsConnected={Boolean(googleConnectionResult.data) && getGoogleContactsMissingConfig().length === 0}
       contactSyncs={googleSyncsResult.data ?? []}
+      defaultTab={query.googleSync ? "contacts" : "basic"}
+      googleSyncNotice={
+        query.googleSync === "synced"
+          ? { ok: true, message: "Google 연락처 동기화를 완료했어." }
+          : query.googleSync === "failed"
+            ? { ok: false, message: "Google 연락처 동기화에 실패했어. 담당자 카드의 오류 내용을 확인해 줘." }
+            : null
+      }
       contacts={(contactsResult.data ?? []).map((contact) => ({
         id: contact.id,
         vendor_id: contact.vendor_id,

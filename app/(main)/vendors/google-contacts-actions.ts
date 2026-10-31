@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
@@ -133,4 +134,15 @@ export async function syncVendorContactToGoogle(input: {
     revalidatePath(`/vendors/${vendorId}`);
     return { ok: false, message: `Google 연락처 동기화에 실패했어. ${detail}` };
   }
+}
+
+export async function syncVendorContactFromForm(formData: FormData): Promise<void> {
+  const parsed = syncSchema.safeParse({
+    contactId: formData.get("contactId"),
+    vendorId: formData.get("vendorId"),
+  });
+  if (!parsed.success) redirect("/vendors?googleSync=failed");
+
+  const result = await syncVendorContactToGoogle(parsed.data);
+  redirect(`/vendors/${parsed.data.vendorId}?googleSync=${result.ok ? "synced" : "failed"}`);
 }
