@@ -12,9 +12,15 @@ export const vendorStatuses = [
 ] as const;
 
 const optionalText = z.string().trim().max(500);
+const databaseUuid = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "식별자 형식이 올바르지 않아.",
+  );
 
 export const vendorSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: databaseUuid.optional(),
   name: z.string().trim().min(1, "상호를 입력해 주세요.").max(100),
   biz_no: z
     .string()
@@ -38,8 +44,8 @@ export const vendorSchema = z.object({
 });
 
 export const vendorContactSchema = z.object({
-  id: z.string().uuid().optional(),
-  vendor_id: z.string().uuid(),
+  id: databaseUuid.optional(),
+  vendor_id: databaseUuid,
   name: z.string().trim().min(1, "담당자명을 입력해 주세요.").max(50),
   title: z.string().trim().max(50),
   phone: z.string().trim().max(30),
@@ -53,8 +59,8 @@ export const vendorContactSchema = z.object({
 });
 
 export const contactLogSchema = z.object({
-  vendor_id: z.string().uuid(),
-  contact_id: z.string().uuid().optional().or(z.literal("")),
+  vendor_id: databaseUuid,
+  contact_id: databaseUuid.optional().or(z.literal("")),
   method: z.enum(["통화", "문자", "메일", "방문"]),
   at: z
     .string()
@@ -63,7 +69,7 @@ export const contactLogSchema = z.object({
 });
 
 export const documentMetadataSchema = z.object({
-  owner_id: z.string().uuid(),
+  owner_id: databaseUuid,
   kind: z.enum(["사업자등록증", "견적서", "제안서", "계약서", "보증증권", "회의자료", "기타"]),
   file_path: z.string().trim().min(1).max(1000),
   file_name: z.string().trim().min(1).max(255),

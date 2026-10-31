@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { toast } from "sonner";
 
 import { saveVendor } from "@/app/(main)/vendors/actions";
@@ -47,6 +47,7 @@ export function VendorFormDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(vendor?.id);
   const form = useForm<VendorInput>({
@@ -55,26 +56,51 @@ export function VendorFormDialog({
   });
 
   useEffect(() => {
-    if (open) form.reset(vendor ?? emptyVendor);
+    if (open) {
+      form.reset(vendor ?? emptyVendor);
+      setSubmitError(null);
+    }
   }, [form, open, vendor]);
 
   function onSubmit(values: VendorInput) {
+    setSubmitError(null);
     startTransition(async () => {
-      const result = await saveVendor(values);
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
-      }
+      try {
+        const result = await saveVendor(values);
+        if (!result.ok) {
+          setSubmitError(result.message);
+          toast.error(result.message);
+          return;
+        }
 
-      toast.success(result.message);
-      setOpen(false);
-      if (!editing && result.id) {
-        router.push(`/vendors/${result.id}`);
-      } else {
-        router.refresh();
+        toast.success(result.message);
+        setOpen(false);
+        if (!editing && result.id) {
+          router.push(`/vendors/${result.id}`);
+        } else {
+          router.refresh();
+        }
+      } catch {
+        const message = "저장 요청을 처리하지 못했어. 잠시 후 다시 시도해 줘.";
+        setSubmitError(message);
+        toast.error(message);
       }
     });
   }
+
+  function onInvalid(errors: FieldErrors<VendorInput>) {
+    const firstInvalidField = Object.keys(errors)[0] as keyof VendorInput | undefined;
+    const message = firstInvalidField
+      ? form.getFieldState(firstInvalidField).error?.message
+      : undefined;
+    const errorMessage = message ?? "입력값을 확인해 줘.";
+
+    setSubmitError(errorMessage);
+    toast.error(errorMessage);
+    if (firstInvalidField) form.setFocus(firstInvalidField);
+  }
+
+  const submitForm = form.handleSubmit(onSubmit, onInvalid);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -94,7 +120,7 @@ export function VendorFormDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
+          <form className="space-y-5" noValidate onSubmit={submitForm}>
             {vendor?.id ? <input type="hidden" {...form.register("id")} /> : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField control={form.control} name="name" render={({ field }) => (
@@ -133,6 +159,11 @@ export function VendorFormDialog({
                 <FormItem><FormLabel>내부 검토의견</FormLabel><FormControl><Textarea placeholder="관리자·임원·사무국만 조회" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
+            {submitError ? (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                {submitError}
+              </p>
+            ) : null}
             <DialogFooter>
               <Button disabled={pending} type="submit">{pending ? "저장 중..." : "저장"}</Button>
               <Button disabled={pending} type="button" variant="outline" onClick={() => setOpen(false)}>취소</Button>
