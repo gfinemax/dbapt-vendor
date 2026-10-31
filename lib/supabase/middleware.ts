@@ -12,9 +12,40 @@ function isPublicPath(pathname: string) {
   );
 }
 
-function copySessionCookies(source: NextResponse, target: NextResponse) {
+const SESSION_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const;
+
+function copySessionState(source: NextResponse, target: NextResponse) {
   source.cookies.getAll().forEach((cookie) => target.cookies.set(cookie));
+  SESSION_CACHE_HEADERS.forEach((header) => {
+    const value = source.headers.get(header);
+    if (value) target.headers.set(header, value);
+  });
   return target;
+}
+
+function clearInvalidSessionCookies(
+  request: NextRequest,
+  response: NextResponse,
+  supabaseUrl: string,
+) {
+  const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+  const authCookieName = `sb-${projectRef}-auth-token`;
+
+  request.cookies
+    .getAll()
+    .filter(
+      ({ name }) =>
+        name === authCookieName || name.startsWith(`${authCookieName}.`),
+    )
+    .forEach(({ name }) => {
+      response.cookies.set(name, "", {
+        expires: new Date(0),
+        path: "/",
+        sameSite: "lax",
+      });
+    });
+
+  return response;
 }
 
 export async function updateSession(request: NextRequest) {
@@ -65,9 +96,10 @@ export async function updateSession(request: NextRequest) {
     loginUrl.pathname = "/login";
     loginUrl.search = "";
     loginUrl.searchParams.set("next", `${pathname}${search}`);
-    return copySessionCookies(
-      supabaseResponse,
-      NextResponse.redirect(loginUrl),
+    return clearInvalidSessionCookies(
+      request,
+      copySessionState(supabaseResponse, NextResponse.redirect(loginUrl)),
+      config.url,
     );
   }
 
@@ -75,7 +107,7 @@ export async function updateSession(request: NextRequest) {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     dashboardUrl.search = "";
-    return copySessionCookies(
+    return copySessionState(
       supabaseResponse,
       NextResponse.redirect(dashboardUrl),
     );
