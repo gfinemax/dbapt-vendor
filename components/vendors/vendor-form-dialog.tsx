@@ -28,11 +28,14 @@ const emptyVendor: VendorInput = {
   name: "",
   biz_no: "",
   ceo: "",
+  phone: "",
   address: "",
   category: "",
   homepage: "",
   bank_name: "",
   bank_account: "",
+  related_person: "",
+  related_person_phone: "",
   status: "후보",
   memo: "",
   internal_note: "",
@@ -132,6 +135,9 @@ export function VendorFormDialog({
               <FormField control={form.control} name="ceo" render={({ field }) => (
                 <FormItem><FormLabel>대표자</FormLabel><FormControl><Input placeholder="대표자명" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
+              <FormField control={form.control} name="phone" render={({ field }) => (
+                <FormItem><FormLabel>업체 연락처</FormLabel><FormControl><Input inputMode="tel" placeholder="02-0000-0000" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
               <FormField control={form.control} name="category" render={({ field }) => (
                 <FormItem><FormLabel>분야 *</FormLabel><FormControl><Input placeholder="예: 인테리어" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -146,6 +152,12 @@ export function VendorFormDialog({
               )} />
               <FormField control={form.control} name="bank_account" render={({ field }) => (
                 <FormItem><FormLabel>계좌번호</FormLabel><FormControl><Input placeholder="계좌번호" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="related_person" render={({ field }) => (
+                <FormItem><FormLabel>관계인</FormLabel><FormControl><Input placeholder="관계인 성명 또는 관계" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="related_person_phone" render={({ field }) => (
+                <FormItem><FormLabel>관계인 연락처</FormLabel><FormControl><Input inputMode="tel" placeholder="010-0000-0000" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
             <FormField control={form.control} name="address" render={({ field }) => (

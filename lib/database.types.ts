@@ -1707,6 +1707,9 @@ export type Database = {
           id: string;
           memo: string | null;
           name: string;
+          phone: string | null;
+          related_person: string | null;
+          related_person_phone: string | null;
           status: Database["public"]["Enums"]["vendor_status"];
           updated_at: string;
         };
@@ -1723,6 +1726,9 @@ export type Database = {
           id?: string;
           memo?: string | null;
           name: string;
+          phone?: string | null;
+          related_person?: string | null;
+          related_person_phone?: string | null;
           status?: Database["public"]["Enums"]["vendor_status"];
           updated_at?: string;
         };
@@ -1738,6 +1744,9 @@ export type Database = {
           id?: string;
           memo?: string | null;
           name?: string;
+          phone?: string | null;
+          related_person?: string | null;
+          related_person_phone?: string | null;
           status?: Database["public"]["Enums"]["vendor_status"];
           updated_at?: string;
         };
@@ -1857,6 +1866,9 @@ export type Database = {
           id: string;
           memo: string | null;
           name: string;
+          phone: string | null;
+          related_person: string | null;
+          related_person_phone: string | null;
           status: Database["public"]["Enums"]["vendor_status"];
           updated_at: string;
         };
@@ -1873,6 +1885,9 @@ export type Database = {
           id?: string | null;
           memo?: string | null;
           name?: string | null;
+          phone?: string | null;
+          related_person?: string | null;
+          related_person_phone?: string | null;
           status?: Database["public"]["Enums"]["vendor_status"] | null;
           updated_at?: string | null;
         };
@@ -1888,6 +1903,9 @@ export type Database = {
           id?: string | null;
           memo?: string | null;
           name?: string | null;
+          phone?: string | null;
+          related_person?: string | null;
+          related_person_phone?: string | null;
           status?: Database["public"]["Enums"]["vendor_status"] | null;
           updated_at?: string | null;
         };
@@ -1971,6 +1989,9 @@ export type Database = {
           internal_note_value?: string;
           memo_value?: string;
           name_value?: string;
+          phone_value?: string;
+          related_person_phone_value?: string;
+          related_person_value?: string;
           status_value?: Database["public"]["Enums"]["vendor_status"];
           vendor_id_value?: string;
         };

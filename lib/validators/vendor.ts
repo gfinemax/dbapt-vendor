@@ -30,6 +30,7 @@ export const vendorSchema = z.object({
       "사업자번호는 000-00-00000 형식으로 입력해 주세요.",
     ),
   ceo: z.string().trim().max(50),
+  phone: z.string().trim().max(50),
   address: z.string().trim().max(300),
   category: z.string().trim().min(1, "분야를 입력해 주세요.").max(100),
   homepage: z
@@ -38,6 +39,8 @@ export const vendorSchema = z.object({
     .refine((value) => value === "" || z.url().safeParse(value).success, "올바른 URL을 입력해 주세요."),
   bank_name: z.string().trim().max(50),
   bank_account: z.string().trim().max(100),
+  related_person: z.string().trim().max(100),
+  related_person_phone: z.string().trim().max(50),
   status: z.enum(vendorStatuses),
   memo: optionalText,
   internal_note: optionalText,

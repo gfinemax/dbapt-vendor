@@ -76,6 +76,7 @@ export async function saveVendor(input: VendorInput): Promise<VendorActionResult
     name_value: values.name,
     biz_no_value: values.biz_no,
     ceo_value: values.ceo,
+    phone_value: values.phone,
     address_value: values.address,
     category_value: values.category,
     homepage_value: values.homepage,
@@ -84,6 +85,8 @@ export async function saveVendor(input: VendorInput): Promise<VendorActionResult
     bank_name_value: values.bank_name,
     bank_account_value: values.bank_account,
     internal_note_value: values.internal_note,
+    related_person_value: values.related_person,
+    related_person_phone_value: values.related_person_phone,
   });
   if (error || !data) return { ok: false, message: databaseMessage(error?.message ?? "") };
   revalidatePath("/vendors");
