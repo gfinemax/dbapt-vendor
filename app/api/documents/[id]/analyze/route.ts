@@ -153,11 +153,9 @@ export async function POST(
     return NextResponse.json({ ok: true, message, analysis: null });
   }
 
-  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
   const directOpenAiKey = process.env.OPENAI_API_KEY;
-  const useGateway = Boolean(gatewayToken);
-  if (!gatewayToken && !directOpenAiKey) {
-    const message = "AI 분석 인증정보가 설정되지 않아 원본만 등록했어.";
+  if (!directOpenAiKey) {
+    const message = "Vercel 환경변수에 OPENAI_API_KEY가 없어 원본만 등록했어.";
     await actor.supabase
       .from("document_analyses")
       .update({ status: "failed", error_message: message })
@@ -194,14 +192,7 @@ export async function POST(
 
   const mimeType = document.mime_type || blob.type || fallbackMimeType(document.file_name);
   const dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
-  const configuredModel = process.env.OPENAI_DOCUMENT_MODEL;
-  const model = configuredModel
-    ? useGateway && !configuredModel.includes("/")
-      ? `openai/${configuredModel}`
-      : configuredModel
-    : useGateway
-      ? "openai/gpt-4.1-mini"
-      : "gpt-4.1-mini";
+  const model = process.env.OPENAI_DOCUMENT_MODEL || "gpt-4.1-mini";
 
   try {
     await actor.supabase
@@ -209,10 +200,7 @@ export async function POST(
       .update({ progress_step: "analyzing" })
       .eq("document_id", document.id);
 
-    const openai = new OpenAI({
-      apiKey: gatewayToken || directOpenAiKey,
-      ...(useGateway ? { baseURL: "https://ai-gateway.vercel.sh/v1" } : {}),
-    });
+    const openai = new OpenAI({ apiKey: directOpenAiKey });
     const image = mimeType.startsWith("image/");
     const fileContent = image
       ? ({ type: "input_image", image_url: dataUrl, detail: "high" } as const)
