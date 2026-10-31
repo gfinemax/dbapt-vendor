@@ -10,6 +10,7 @@ import {
   Mail,
   MessageSquare,
   Phone,
+  RefreshCw,
   Star,
   UserRound,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { deactivateVendorContact, getDocumentDownloadUrl } from "@/app/(main)/vendors/actions";
+import { syncVendorContactToGoogle } from "@/app/(main)/vendors/google-contacts-actions";
 import { VendorStatusBadge } from "@/components/vendors/vendor-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,9 @@ const VendorFormDialog = dynamic(
 export type VendorDetailProps = {
   vendor: Omit<VendorInput, "internal_note"> & { id: string; status: VendorStatus; internal_note?: string };
   canManage: boolean;
+  canSyncGoogleContacts: boolean;
+  googleContactsConnected: boolean;
+  contactSyncs: Array<{ vendor_contact_id: string; sync_status: string; last_synced_at: string | null; last_error: string | null }>;
   contacts: Array<VendorContactInput & { id: string; created_at: string }>;
   projects: Array<{ id: string; title: string; category: string | null; stage: ProjectStage; role: string }>;
   documents: Array<{ id: string; kind: string; file_name: string; version: number; valid_until: string | null; created_at: string }>;
@@ -76,10 +81,11 @@ function expiryBadge(date: string | null, todayKst: string) {
   return <Badge variant="secondary">{dDay(date, todayKst)}</Badge>;
 }
 
-export function VendorDetail({ vendor, canManage, contacts, projects, documents, logs, reviews, timeline, todayKst, defaultContactAt }: VendorDetailProps) {
+export function VendorDetail({ vendor, canManage, canSyncGoogleContacts, googleContactsConnected, contactSyncs, contacts, projects, documents, logs, reviews, timeline, todayKst, defaultContactAt }: VendorDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const activeContacts = contacts.filter((contact) => contact.active);
+  const contactSyncMap = new Map(contactSyncs.map((sync) => [sync.vendor_contact_id, sync]));
 
   function deactivate(contactId: string) {
     startTransition(async () => {
@@ -101,6 +107,15 @@ export function VendorDetail({ vendor, canManage, contacts, projects, documents,
         return;
       }
       window.location.assign(result.url);
+    });
+  }
+
+  function syncGoogle(contactId: string) {
+    startTransition(async () => {
+      const result = await syncVendorContactToGoogle({ contactId, vendorId: vendor.id });
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
+      router.refresh();
     });
   }
 
@@ -132,7 +147,7 @@ export function VendorDetail({ vendor, canManage, contacts, projects, documents,
         <TabsContent value="contacts" className="space-y-4">
           <div className="flex justify-end">{canManage ? <ContactDialog vendorId={vendor.id} /> : null}</div>
           <div className="grid gap-4 md:grid-cols-2">{contacts.length ? contacts.map((contact) => (
-            <Card key={contact.id} className={!contact.active ? "opacity-60" : ""} size="sm"><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex flex-wrap items-center gap-2">{contact.name}{contact.is_primary ? <Badge>주 담당</Badge> : null}{!contact.active ? <Badge variant="secondary">비활성</Badge> : null}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{contact.title || "직책 미등록"} · {contact.duty || "담당 업무 미등록"}</p></div>{canManage ? <ContactDialog contact={contact} vendorId={vendor.id} /> : null}</div></CardHeader><CardContent className="space-y-2"><p className="flex items-center gap-2"><Phone className="size-4 text-muted-foreground" />{contact.phone || "전화번호 미등록"}</p><p className="flex items-center gap-2"><Mail className="size-4 text-muted-foreground" />{contact.email || "이메일 미등록"}</p>{canManage && contact.active ? <Button disabled={pending} size="sm" variant="ghost" onClick={() => deactivate(contact.id)}>비활성 처리</Button> : null}</CardContent></Card>
+            <Card key={contact.id} className={!contact.active ? "opacity-60" : ""} size="sm"><CardHeader><div className="flex items-start justify-between gap-3"><div><CardTitle className="flex flex-wrap items-center gap-2">{contact.name}{contact.is_primary ? <Badge>주 담당</Badge> : null}{!contact.active ? <Badge variant="secondary">비활성</Badge> : null}{contactSyncMap.get(contact.id)?.sync_status === "synced" ? <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700" variant="outline">Google 연동 완료</Badge> : null}{contactSyncMap.get(contact.id)?.sync_status === "failed" ? <Badge variant="destructive">Google 연동 오류</Badge> : null}{contactSyncMap.get(contact.id)?.sync_status === "pending" ? <Badge variant="secondary">Google 동기화 중</Badge> : null}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{contact.title || "직책 미등록"} · {contact.duty || "담당 업무 미등록"}</p></div>{canManage ? <ContactDialog contact={contact} vendorId={vendor.id} /> : null}</div></CardHeader><CardContent className="space-y-2"><p className="flex items-center gap-2"><Phone className="size-4 text-muted-foreground" />{contact.phone || "전화번호 미등록"}</p><p className="flex items-center gap-2"><Mail className="size-4 text-muted-foreground" />{contact.email || "이메일 미등록"}</p>{contactSyncMap.get(contact.id)?.last_synced_at ? <p className="text-xs text-muted-foreground">마지막 Google 동기화 {formatDateTime(contactSyncMap.get(contact.id)!.last_synced_at!)}</p> : null}{contactSyncMap.get(contact.id)?.last_error ? <p className="text-xs text-destructive">{contactSyncMap.get(contact.id)!.last_error}</p> : null}<div className="flex flex-wrap gap-2">{canSyncGoogleContacts && contact.active ? googleContactsConnected ? <Button disabled={pending} size="sm" variant="outline" onClick={() => syncGoogle(contact.id)}><RefreshCw />{contactSyncMap.get(contact.id)?.sync_status === "synced" ? "다시 동기화" : "Google 연락처 동기화"}</Button> : <Button asChild size="sm" variant="outline"><Link href="/settings">Google 연결 필요</Link></Button> : null}{canManage && contact.active ? <Button disabled={pending} size="sm" variant="ghost" onClick={() => deactivate(contact.id)}>비활성 처리</Button> : null}</div></CardContent></Card>
           )) : <Card className="border-dashed md:col-span-2"><CardContent className="py-12 text-center text-muted-foreground">등록된 담당자가 없어.</CardContent></Card>}</div>
         </TabsContent>
 

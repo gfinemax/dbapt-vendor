@@ -34,11 +34,32 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+GOOGLE_CONTACTS_CLIENT_ID=
+GOOGLE_CONTACTS_CLIENT_SECRET=
+GOOGLE_CONTACTS_REDIRECT_URI=
+GOOGLE_CONTACTS_TOKEN_ENCRYPTION_KEY=
 ```
 
 - 브라우저에는 publishable key만 노출해. 레거시 프로젝트는 `NEXT_PUBLIC_SUPABASE_ANON_KEY`를 대체값으로 사용할 수 있어.
 - `SUPABASE_SERVICE_ROLE_KEY`는 사용자 초대와 Edge Function 서버 처리에만 사용하고 클라이언트 코드에 넣지 않아.
 - `RESEND_FROM_EMAIL`은 Resend에서 인증한 발신 주소를 사용해.
+- Google 연락처 관련 값은 모두 서버 전용이야. 토큰 암호화 키는 32바이트 값을 Base64로 인코딩하고, 계정을 연결한 뒤에는 바꾸지 않아.
+
+## Google 연락처 연동
+
+연동 방향은 DB-Vendor에서 Google 연락처로 보내는 단방향이야. 관리자만 설정에서 공용 Google 계정을 연결하고, 업체 상세의 담당자 탭에서 필요한 담당자를 한 명씩 동기화할 수 있어. 관계인과 내부 검토의견은 전송하지 않아.
+
+1. Google Cloud에서 People API를 사용 설정해.
+2. OAuth 동의 화면과 웹 애플리케이션 OAuth 클라이언트를 만들어.
+3. 승인된 리디렉션 URI에 운영 주소의 `/api/integrations/google-contacts/callback`을 등록해.
+4. Client ID, Client Secret, 동일한 Redirect URI와 암호화 키를 Vercel 환경 변수에 저장해.
+5. 배포 후 `/settings`에서 Google 계정을 연결해.
+
+암호화 키는 PowerShell에서 다음처럼 만들 수 있어. 출력값은 비밀로 보관하고 저장소에 커밋하지 않아.
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
 
 ## 데이터베이스와 시드
 

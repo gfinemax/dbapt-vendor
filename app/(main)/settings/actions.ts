@@ -63,3 +63,15 @@ export async function setProjectAssignment(input: { project_id: string; user_id:
   revalidatePath("/settings");
   return { ok: true, message: value.assigned ? "용역 담당자로 배정했어." : "용역 담당자 배정을 해제했어." };
 }
+
+export async function disconnectGoogleContacts(): Promise<SettingsActionResult> {
+  const access = await requireAdmin();
+  if (!access.actor) return { ok: false, message: access.error };
+  const { error } = await access.actor.supabase
+    .from("google_contact_connections")
+    .update({ deleted_at: new Date().toISOString() })
+    .is("deleted_at", null);
+  if (error) return { ok: false, message: "Google 연락처 연결을 해제하지 못했어." };
+  revalidatePath("/settings");
+  return { ok: true, message: "Google 연락처 연결을 해제했어." };
+}

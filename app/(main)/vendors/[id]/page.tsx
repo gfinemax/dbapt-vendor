@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { VendorDetail, type VendorDetailProps } from "@/components/vendors/vendor-detail";
+import { getGoogleContactsMissingConfig } from "@/lib/google/contacts";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -145,6 +146,17 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const primaryContact =
     (contactsResult.data ?? []).find((contact) => contact.active && contact.is_primary) ??
     (contactsResult.data ?? []).find((contact) => contact.active);
+  const contactIds = (contactsResult.data ?? []).map((contact) => contact.id);
+  const [googleConnectionResult, googleSyncsResult] = role === "admin"
+    ? await Promise.all([
+        supabase.from("google_contact_connections").select("id").is("deleted_at", null).maybeSingle(),
+        supabase
+          .from("google_contact_syncs")
+          .select("vendor_contact_id,sync_status,last_synced_at,last_error")
+          .in("vendor_contact_id", contactIds.length ? contactIds : ["00000000-0000-0000-0000-000000000000"])
+          .is("deleted_at", null),
+      ])
+    : [{ data: null }, { data: [] }];
   const timeline: VendorDetailProps["timeline"] = [
     ...(quotesResult.data ?? []).map((quote) => ({
       id: `quote-${quote.id}`,
@@ -204,6 +216,9 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   return (
     <VendorDetail
       canManage={role === "admin" || role === "staff"}
+      canSyncGoogleContacts={role === "admin"}
+      googleContactsConnected={Boolean(googleConnectionResult.data) && getGoogleContactsMissingConfig().length === 0}
+      contactSyncs={googleSyncsResult.data ?? []}
       contacts={(contactsResult.data ?? []).map((contact) => ({
         id: contact.id,
         vendor_id: contact.vendor_id,

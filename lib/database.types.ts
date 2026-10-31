@@ -747,6 +747,118 @@ export type Database = {
           },
         ];
       };
+      google_contact_connections: {
+        Row: {
+          account_email: string;
+          connected_at: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          last_verified_at: string | null;
+          refresh_token_ciphertext: string;
+          refresh_token_iv: string;
+          refresh_token_tag: string;
+          scopes: string[];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          account_email: string;
+          connected_at?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          last_verified_at?: string | null;
+          refresh_token_ciphertext: string;
+          refresh_token_iv: string;
+          refresh_token_tag: string;
+          scopes?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          account_email?: string;
+          connected_at?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          last_verified_at?: string | null;
+          refresh_token_ciphertext?: string;
+          refresh_token_iv?: string;
+          refresh_token_tag?: string;
+          scopes?: string[];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_contact_connections_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      google_contact_syncs: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          google_etag: string | null;
+          google_resource_name: string | null;
+          id: string;
+          last_error: string | null;
+          last_synced_at: string | null;
+          sync_status: string;
+          updated_at: string;
+          vendor_contact_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          google_etag?: string | null;
+          google_resource_name?: string | null;
+          id?: string;
+          last_error?: string | null;
+          last_synced_at?: string | null;
+          sync_status?: string;
+          updated_at?: string;
+          vendor_contact_id: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          google_etag?: string | null;
+          google_resource_name?: string | null;
+          id?: string;
+          last_error?: string | null;
+          last_synced_at?: string | null;
+          sync_status?: string;
+          updated_at?: string;
+          vendor_contact_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_contact_syncs_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "google_contact_syncs_vendor_contact_id_fkey";
+            columns: ["vendor_contact_id"];
+            isOneToOne: false;
+            referencedRelation: "vendor_contacts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       guarantees: {
         Row: {
           amount: number;
