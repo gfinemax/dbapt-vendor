@@ -2023,7 +2023,15 @@ export type Database = {
         | "보류";
       settlement_status: "미정산" | "정산요청" | "정산완료";
       user_role: "admin" | "executive" | "staff" | "agent" | "viewer";
-      vendor_status: "후보" | "견적중" | "선정" | "계약중" | "완료" | "탈락" | "거래중지";
+      vendor_status:
+        | "후보"
+        | "견적중"
+        | "선정"
+        | "계약협의"
+        | "계약중"
+        | "완료"
+        | "탈락"
+        | "거래중지";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -2160,7 +2168,7 @@ export const Constants = {
       project_stage: ["견적요청", "비교검토", "선정", "계약", "진행", "준공", "정산완료", "보류"],
       settlement_status: ["미정산", "정산요청", "정산완료"],
       user_role: ["admin", "executive", "staff", "agent", "viewer"],
-      vendor_status: ["후보", "견적중", "선정", "계약중", "완료", "탈락", "거래중지"],
+      vendor_status: ["후보", "견적중", "선정", "계약협의", "계약중", "완료", "탈락", "거래중지"],
     },
   },
 } as const;

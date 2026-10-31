@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(10);
+select plan(11);
 
 set local role authenticated;
 select set_config(
@@ -47,6 +47,16 @@ select is(
   (select status::text from public.vendors where id = '90000000-0000-0000-0000-000000000001'),
   '견적중',
   'admin can update a vendor'
+);
+
+update public.vendors
+set status = '계약협의'
+where id = '90000000-0000-0000-0000-000000000001';
+
+select is(
+  (select status::text from public.vendors where id = '90000000-0000-0000-0000-000000000001'),
+  '계약협의',
+  'selected vendor can move into contract negotiation before contract execution'
 );
 
 insert into public.vendor_contacts (
