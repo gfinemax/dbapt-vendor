@@ -4,6 +4,7 @@ create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 select plan(12);
 
+delete from vault.secrets where name = 'daily_reminder_token';
 select lives_ok($$select vault.create_secret('phase6-test-token', 'daily_reminder_token')$$, 'daily reminder token can be stored in Vault');
 
 set local role authenticated;
