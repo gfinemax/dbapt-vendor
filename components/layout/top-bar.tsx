@@ -4,6 +4,7 @@ import { LogOut, Menu, UserRound } from "lucide-react";
 
 import { signOut } from "@/app/(main)/actions";
 import { AppSidebar, SidebarBrand } from "@/components/layout/app-sidebar";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +36,8 @@ export function TopBar({ email }: { email: string }) {
           <p className="hidden text-xs text-muted-foreground sm:block">용역 업무를 한곳에서 관리해</p>
         </div>
       </div>
+
+      <GlobalSearch />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

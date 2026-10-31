@@ -582,6 +582,67 @@ export type Database = {
           },
         ]
       }
+      notification_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          event_id: string
+          id: string
+          provider_message_id: string | null
+          recipient_user_id: string
+          sent_at: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          event_id: string
+          id?: string
+          provider_message_id?: string | null
+          recipient_user_id: string
+          sent_at?: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          event_id?: string
+          id?: string
+          provider_message_id?: string | null
+          recipient_user_id?: string
+          sent_at?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_logs_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_schedules: {
         Row: {
           amount: number
@@ -1402,6 +1463,10 @@ export type Database = {
           target_vendor_id: string
         }
         Returns: undefined
+      }
+      verify_daily_reminder_token: {
+        Args: { input_token: string }
+        Returns: boolean
       }
     }
     Enums: {
