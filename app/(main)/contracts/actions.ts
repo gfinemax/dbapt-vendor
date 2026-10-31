@@ -113,7 +113,7 @@ export async function createContractDocument(
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const { error } = await actor.supabase
+  const { data, error } = await actor.supabase
     .from("documents")
     .insert({
       owner_type: "contract",
@@ -121,13 +121,17 @@ export async function createContractDocument(
       kind: value.kind,
       file_path: value.file_path,
       file_name: value.file_name,
+      mime_type: value.mime_type || null,
+      file_size: value.file_size,
       version: (latest?.version ?? 0) + 1,
       created_by: actor.userId,
-    });
-  if (error) return { ok: false, message: databaseMessage(error.message) };
+    })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, message: databaseMessage(error?.message ?? "") };
   revalidatePath(`/contracts/${value.contract_id}`);
   revalidatePath(`/projects/${value.project_id}`);
-  return { ok: true, message: `${value.kind}을 첨부했어.` };
+  return { ok: true, id: data.id, message: `${value.kind}을 첨부했어.` };
 }
 
 export async function updatePayment(input: PaymentUpdateInput): Promise<ContractActionResult> {

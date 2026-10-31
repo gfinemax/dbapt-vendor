@@ -47,6 +47,8 @@ export const contractDocumentSchema = z.object({
   kind: z.enum(["계약서", "보증증권"]),
   file_path: z.string().min(1).max(500),
   file_name: z.string().min(1).max(255),
+  mime_type: z.string().trim().max(200).default(""),
+  file_size: z.number().int().nonnegative().max(20 * 1024 * 1024).nullable().default(null),
 });
 
 export const paymentUpdateSchema = z.object({

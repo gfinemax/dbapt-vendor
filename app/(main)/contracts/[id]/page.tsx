@@ -6,6 +6,8 @@ import { ContractFormDialog } from "@/components/contracts/contract-form-dialog"
 import { ApprovalSubmitButton } from "@/components/contracts/approval-submit-button";
 import { GuaranteeFormDialog } from "@/components/contracts/guarantee-form-dialog";
 import { PaymentStatusEditor } from "@/components/contracts/payment-status-editor";
+import { DocumentList } from "@/components/documents/document-list";
+import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -92,7 +94,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       .order("date"),
     supabase
       .from("documents")
-      .select("id,kind,file_name,version,created_at")
+      .select("id,kind,file_name,mime_type,file_size,version,created_at")
       .eq("owner_type", "contract")
       .in("owner_id", familyIds)
       .is("deleted_at", null)
@@ -110,6 +112,29 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       .eq("project_id", root.project_id)
       .is("deleted_at", null),
   ]);
+  const { data: appliedAnalyses } = await supabase
+    .from("document_analyses")
+    .select("document_id")
+    .eq("applied_owner_type", "contract")
+    .eq("applied_owner_id", rootId)
+    .is("deleted_at", null);
+  const appliedDocumentIds = (appliedAnalyses ?? []).map((analysis) => analysis.document_id);
+  const { data: appliedDocuments } = appliedDocumentIds.length
+    ? await supabase
+        .from("documents")
+        .select("id,kind,file_name,mime_type,file_size,version,created_at")
+        .in("id", appliedDocumentIds)
+        .is("deleted_at", null)
+    : { data: [] };
+  const mergedDocuments = [...new Map([...(documentsResult.data ?? []), ...(appliedDocuments ?? [])].map((document) => [document.id, document])).values()];
+  const { data: documentAnalyses } = mergedDocuments.length
+    ? await supabase
+        .from("document_analyses")
+        .select("document_id,status,summary,error_message,extracted_data")
+        .in("document_id", mergedDocuments.map((document) => document.id))
+        .is("deleted_at", null)
+    : { data: [] };
+  const documentAnalysisMap = new Map((documentAnalyses ?? []).map((analysis) => [analysis.document_id, analysis]));
   const vendorIds = (linksResult.data ?? []).map((link) => link.vendor_id);
   const vendorNamesResult =
     role === "agent" || role === "viewer"
@@ -263,26 +288,14 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FileText className="size-5" />
               첨부 문서
             </CardTitle>
+            {canManage ? <DocumentUploadDialog defaultKind="계약서" ownerId={rootId} ownerType="contract" /> : null}
           </CardHeader>
-          <CardContent className="space-y-2">
-            {documentsResult.data?.length ? (
-              documentsResult.data.map((document) => (
-                <div key={document.id} className="rounded-lg border p-2">
-                  <p className="truncate text-sm font-medium">{document.file_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {document.kind} · v{document.version}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">첨부된 문서가 없어.</p>
-            )}
-          </CardContent>
+          <CardContent className="p-0"><DocumentList canAnalyze={canManage} documents={mergedDocuments.map((document) => { const analysis = documentAnalysisMap.get(document.id); return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, extractedData: analysis?.extracted_data ?? null }; })} /></CardContent>
         </Card>
       </div>
       <Card className="py-0">

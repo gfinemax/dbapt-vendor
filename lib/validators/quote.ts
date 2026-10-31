@@ -30,6 +30,8 @@ export const quoteDocumentSchema = z.object({
   project_id: z.string().uuid(),
   file_path: z.string().trim().min(1).max(1000),
   file_name: z.string().trim().min(1).max(255),
+  mime_type: z.string().trim().max(200).default(""),
+  file_size: z.number().int().nonnegative().max(20 * 1024 * 1024).nullable().default(null),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;

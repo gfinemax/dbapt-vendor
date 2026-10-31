@@ -86,6 +86,8 @@ export const documentMetadataSchema = z.object({
   kind: z.enum(["사업자등록증", "견적서", "제안서", "계약서", "보증증권", "회의자료", "기타"]),
   file_path: z.string().trim().min(1).max(1000),
   file_name: z.string().trim().min(1).max(255),
+  mime_type: z.string().trim().max(200).default(""),
+  file_size: z.number().int().nonnegative().max(20 * 1024 * 1024).nullable().default(null),
   valid_until: z.string().date().optional().or(z.literal("")),
 });
 

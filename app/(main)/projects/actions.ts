@@ -106,18 +106,20 @@ export async function createQuoteDocument(input: QuoteDocumentInput): Promise<Pr
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const { error } = await actor.supabase.from("documents").insert({
+  const { data, error } = await actor.supabase.from("documents").insert({
     owner_type: "quote",
     owner_id: values.quote_id,
     kind: "견적서",
     file_path: values.file_path,
     file_name: values.file_name,
+    mime_type: values.mime_type || null,
+    file_size: values.file_size,
     version: (latest?.version ?? 0) + 1,
     created_by: actor.userId,
-  });
-  if (error) return { ok: false, message: databaseMessage(error.message) };
+  }).select("id").single();
+  if (error || !data) return { ok: false, message: databaseMessage(error?.message ?? "") };
   revalidatePath(`/projects/${values.project_id}`);
-  return { ok: true, message: "견적서를 첨부했어." };
+  return { ok: true, id: data.id, message: "견적서를 첨부했어." };
 }
 
 export async function selectProjectVendor(input: SelectionInput): Promise<ProjectActionResult> {

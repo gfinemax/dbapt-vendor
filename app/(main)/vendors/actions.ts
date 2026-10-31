@@ -235,6 +235,8 @@ export async function createVendorDocument(
       kind: values.kind,
       file_path: values.file_path,
       file_name: values.file_name,
+      mime_type: values.mime_type || null,
+      file_size: values.file_size,
       version: (latest?.version ?? 0) + 1,
       valid_until: values.valid_until || null,
       created_by: actor.userId,

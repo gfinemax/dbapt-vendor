@@ -20,6 +20,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { deactivateVendorContact, getDocumentDownloadUrl } from "@/app/(main)/vendors/actions";
+import { DocumentViewerDialog } from "@/components/documents/document-viewer-dialog";
 import { VendorStatusBadge } from "@/components/vendors/vendor-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,7 +155,7 @@ export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googl
 
         <TabsContent value="documents" className="space-y-4">
           {canManage ? <FileUploader vendorId={vendor.id} /> : null}
-          <Card className="py-0"><div className="divide-y">{documents.length ? documents.map((document) => <div key={document.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{document.kind}</Badge><span className="truncate font-medium">{document.file_name}</span><span className="text-xs text-muted-foreground">v{document.version}</span>{expiryBadge(document.valid_until, todayKst)}</div><p className="mt-1 text-xs text-muted-foreground">등록 {formatDate(document.created_at)}{document.valid_until ? ` · 유효기간 ${formatDate(document.valid_until)}` : ""}</p></div><Button disabled={pending} size="sm" variant="outline" onClick={() => download(document.id)}><Download />60초 다운로드</Button></div>) : <div className="p-10 text-center text-muted-foreground">등록된 서류가 없어.</div>}</div></Card>
+          <Card className="py-0"><div className="divide-y">{documents.length ? documents.map((document) => <div key={document.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{document.kind}</Badge><span className="truncate font-medium">{document.file_name}</span><span className="text-xs text-muted-foreground">v{document.version}</span>{expiryBadge(document.valid_until, todayKst)}</div><p className="mt-1 text-xs text-muted-foreground">등록 {formatDate(document.created_at)}{document.valid_until ? ` · 유효기간 ${formatDate(document.valid_until)}` : ""}</p></div><div className="flex gap-2"><DocumentViewerDialog documentId={document.id} fileName={document.file_name} /><Button disabled={pending} size="sm" variant="outline" onClick={() => download(document.id)}><Download />60초 다운로드</Button></div></div>) : <div className="p-10 text-center text-muted-foreground">등록된 서류가 없어.</div>}</div></Card>
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">

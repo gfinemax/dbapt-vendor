@@ -74,7 +74,7 @@ export default async function ProjectDetailPage({
       .order("date"),
     supabase
       .from("documents")
-      .select("id,kind,file_name,version,created_at")
+      .select("id,kind,file_name,mime_type,file_size,version,created_at")
       .eq("owner_type", "project")
       .eq("owner_id", id)
       .is("deleted_at", null)
@@ -120,6 +120,33 @@ export default async function ProjectDetailPage({
     (vendorRows ?? []).flatMap((vendor) =>
       vendor.id && vendor.name ? [[vendor.id, vendor.name]] : [],
     ),
+  );
+  const { data: appliedAnalyses } = await supabase
+    .from("document_analyses")
+    .select("document_id")
+    .eq("applied_project_id", id)
+    .is("deleted_at", null);
+  const appliedDocumentIds = (appliedAnalyses ?? []).map((analysis) => analysis.document_id);
+  const { data: appliedDocuments } = appliedDocumentIds.length
+    ? await supabase
+        .from("documents")
+        .select("id,kind,file_name,mime_type,file_size,version,created_at")
+        .in("id", appliedDocumentIds)
+        .is("deleted_at", null)
+    : { data: [] };
+  const documentMap = new Map(
+    [...(documentsResult.data ?? []), ...(appliedDocuments ?? [])].map((document) => [document.id, document]),
+  );
+  const allDocuments = [...documentMap.values()];
+  const { data: documentAnalyses } = allDocuments.length
+    ? await supabase
+        .from("document_analyses")
+        .select("document_id,status,summary,error_message,extracted_data")
+        .in("document_id", allDocuments.map((document) => document.id))
+        .is("deleted_at", null)
+    : { data: [] };
+  const documentAnalysisMap = new Map(
+    (documentAnalyses ?? []).map((analysis) => [analysis.document_id, analysis]),
   );
   const ownerMap = new Map((usersResult.data ?? []).map((user) => [user.id, user.name]));
   const internalNote = safeView ? undefined : (internalNoteResult.data?.content ?? "");
@@ -172,6 +199,7 @@ export default async function ProjectDetailPage({
     contracts: (contractsResult.data ?? []).map((contract) => ({
       id: contract.id,
       title: contract.title,
+      vendorId: contract.vendor_id,
       vendorName: vendorMap.get(contract.vendor_id) ?? "업체",
       signedAt: contract.signed_at,
       amount: contract.amount,
@@ -185,12 +213,18 @@ export default async function ProjectDetailPage({
       vendorName: meeting.vendor_id ? (vendorMap.get(meeting.vendor_id) ?? null) : null,
     })),
     events: eventsResult.data ?? [],
-    documents: (documentsResult.data ?? []).map((document) => ({
+    documents: allDocuments.map((document) => ({
       id: document.id,
       kind: document.kind,
       fileName: document.file_name,
+      mimeType: document.mime_type,
+      fileSize: document.file_size,
       version: document.version,
       createdAt: document.created_at,
+      analysisStatus: documentAnalysisMap.get(document.id)?.status ?? null,
+      analysisSummary: documentAnalysisMap.get(document.id)?.summary ?? null,
+      analysisError: documentAnalysisMap.get(document.id)?.error_message ?? null,
+      extractedData: documentAnalysisMap.get(document.id)?.extracted_data ?? null,
     })),
     canCreateQuote: role === "admin" || role === "staff" || role === "agent",
     canManageContracts: role === "admin" || role === "staff" || role === "agent",
@@ -198,6 +232,7 @@ export default async function ProjectDetailPage({
     canManageMeetings: role === "admin" || role === "staff" || role === "agent",
     meetingUsers: usersResult.data ?? [],
     canSelect: role === "admin" || role === "staff",
+    canManageDocuments: role === "admin" || role === "staff" || role === "agent",
     defaultTab: query.tab ?? "overview",
   };
   return <ProjectDetail {...props} />;

@@ -567,10 +567,12 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
+          file_size: number | null;
           file_name: string;
           file_path: string;
           id: string;
           kind: string;
+          mime_type: string | null;
           owner_id: string;
           owner_type: string;
           updated_at: string;
@@ -582,10 +584,12 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          file_size?: number | null;
           file_name: string;
           file_path: string;
           id?: string;
           kind: string;
+          mime_type?: string | null;
           owner_id: string;
           owner_type: string;
           updated_at?: string;
@@ -596,10 +600,12 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          file_size?: number | null;
           file_name?: string;
           file_path?: string;
           id?: string;
           kind?: string;
+          mime_type?: string | null;
           owner_id?: string;
           owner_type?: string;
           updated_at?: string;
@@ -612,6 +618,103 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      document_analyses: {
+        Row: {
+          analyzed_at: string | null;
+          applied_at: string | null;
+          applied_by: string | null;
+          applied_owner_id: string | null;
+          applied_owner_type: string | null;
+          applied_project_id: string | null;
+          confidence: number | null;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          detected_kind: string | null;
+          document_id: string;
+          error_message: string | null;
+          evidence: NonNullable<Json>;
+          extracted_data: NonNullable<Json>;
+          id: string;
+          model: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          schema_version: string;
+          source_hash: string | null;
+          status: string;
+          summary: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          analyzed_at?: string | null;
+          applied_at?: string | null;
+          applied_by?: string | null;
+          applied_owner_id?: string | null;
+          applied_owner_type?: string | null;
+          applied_project_id?: string | null;
+          confidence?: number | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          detected_kind?: string | null;
+          document_id: string;
+          error_message?: string | null;
+          evidence?: NonNullable<Json>;
+          extracted_data?: NonNullable<Json>;
+          id?: string;
+          model?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          schema_version?: string;
+          source_hash?: string | null;
+          status?: string;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          analyzed_at?: string | null;
+          applied_at?: string | null;
+          applied_by?: string | null;
+          applied_owner_id?: string | null;
+          applied_owner_type?: string | null;
+          applied_project_id?: string | null;
+          confidence?: number | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          detected_kind?: string | null;
+          document_id?: string;
+          error_message?: string | null;
+          evidence?: NonNullable<Json>;
+          extracted_data?: NonNullable<Json>;
+          id?: string;
+          model?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          schema_version?: string;
+          source_hash?: string | null;
+          status?: string;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_analyses_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: true;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_analyses_applied_project_id_fkey";
+            columns: ["applied_project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
             referencedColumns: ["id"];
           },
         ];
@@ -2049,6 +2152,21 @@ export type Database = {
           title_value: string;
           vat_value: number;
           vendor_id_value: string;
+        };
+        Returns: string;
+      };
+      create_service_case_from_documents: {
+        Args: {
+          budget_value: number;
+          business_project_id_value: string;
+          category_value: Database["public"]["Enums"]["project_category"];
+          contract_rows?: Json;
+          description_value: string;
+          document_ids_value: string[];
+          owner_user_id_value: string | null;
+          quote_rows?: Json;
+          stage_value: Database["public"]["Enums"]["project_stage"];
+          title_value: string;
         };
         Returns: string;
       };

@@ -143,11 +143,14 @@ export function ContractFormDialog({
       kind: "계약서",
       file_path: path,
       file_name: selectedFile.name,
+      mime_type: selectedFile.type,
+      file_size: selectedFile.size,
     });
     if (!result.ok) {
       await supabase.storage.from("vendor-files").remove([path]);
       throw new Error(result.message);
     }
+    if (result.id) await fetch(`/api/documents/${result.id}/analyze`, { method: "POST" });
   }
 
   function onSubmit(values: ContractInput) {

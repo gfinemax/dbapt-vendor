@@ -59,11 +59,12 @@ export function QuoteFormDialog({ projectId, vendors }: { projectId: string; ven
     const path = `quote/${quoteId}/견적서/${Date.now()}_${crypto.randomUUID()}_${safeFileName(selectedFile.name)}`;
     const { error } = await supabase.storage.from("vendor-files").upload(path, selectedFile, { upsert: false, contentType: selectedFile.type || undefined });
     if (error) throw new Error(`견적서 업로드 실패: ${error.message}`);
-    const result = await createQuoteDocument({ quote_id: quoteId, project_id: projectId, file_path: path, file_name: selectedFile.name });
+    const result = await createQuoteDocument({ quote_id: quoteId, project_id: projectId, file_path: path, file_name: selectedFile.name, mime_type: selectedFile.type, file_size: selectedFile.size });
     if (!result.ok) {
       await supabase.storage.from("vendor-files").remove([path]);
       throw new Error(result.message);
     }
+    if (result.id) await fetch(`/api/documents/${result.id}/analyze`, { method: "POST" });
   }
 
   function onSubmit(values: QuoteInput) {

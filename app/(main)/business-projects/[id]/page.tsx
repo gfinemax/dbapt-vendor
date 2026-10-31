@@ -7,6 +7,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ServiceCaseFormDialog } from "@/components/business-projects/service-case-form-dialog";
+import { DocumentIntakeDialog } from "@/components/documents/document-intake-dialog";
+import { DocumentList } from "@/components/documents/document-list";
+import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { ProjectStageBadge } from "@/components/projects/project-stage-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +27,8 @@ export default async function BusinessProjectDetailPage({
   const supabase = await createClient();
   const { data: role } = await supabase.rpc("current_role");
   const safeView = role === "agent" || role === "viewer";
-  const [{ data: project, error }, { data: serviceCases }, { data: users }] =
+  const canManage = role === "admin" || role === "staff";
+  const [{ data: project, error }, { data: serviceCases }, { data: users }, { data: documents }] =
     await Promise.all([
       supabase
         .from("business_projects")
@@ -43,8 +47,33 @@ export default async function BusinessProjectDetailPage({
         .eq("active", true)
         .is("deleted_at", null)
         .order("name"),
+      supabase
+        .from("documents")
+        .select("id,kind,file_name,mime_type,file_size,version,created_at")
+        .eq("owner_type", "business_project")
+        .eq("owner_id", id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
     ]);
   if (error || !project) notFound();
+  const documentIds = (documents ?? []).map((document) => document.id);
+  const [{ data: analyses }, { data: vendors }] = await Promise.all([
+    documentIds.length
+      ? supabase
+          .from("document_analyses")
+          .select("document_id,status,summary,error_message,extracted_data")
+          .in("document_id", documentIds)
+          .is("deleted_at", null)
+      : Promise.resolve({ data: [] }),
+    canManage
+      ? supabase
+          .from("vendors")
+          .select("id,name,biz_no")
+          .is("deleted_at", null)
+          .order("name")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const analysisMap = new Map((analyses ?? []).map((analysis) => [analysis.document_id, analysis]));
   const ownerMap = new Map((users ?? []).map((user) => [user.id, user.name]));
   const totalBudget = (serviceCases ?? []).reduce(
     (sum, serviceCase) => sum + (serviceCase.budget ?? 0),
@@ -54,7 +83,6 @@ export default async function BusinessProjectDetailPage({
     (serviceCase) =>
       serviceCase.stage !== "정산완료" && serviceCase.stage !== "보류",
   ).length;
-  const canManage = role === "admin" || role === "staff";
 
   return (
     <section className="mx-auto max-w-7xl space-y-6">
@@ -80,12 +108,7 @@ export default async function BusinessProjectDetailPage({
             {project.description ?? "등록된 설명이 없어."}
           </p>
         </div>
-        {canManage ? (
-          <ServiceCaseFormDialog
-            businessProjectId={project.id}
-            users={users ?? []}
-          />
-        ) : null}
+        {canManage ? <div className="flex flex-wrap gap-2"><DocumentIntakeDialog businessProjectId={project.id} users={users ?? []} vendors={(vendors ?? []).map((vendor) => ({ id: vendor.id, name: vendor.name, bizNo: vendor.biz_no }))} /><ServiceCaseFormDialog businessProjectId={project.id} users={users ?? []} /></div> : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Card size="sm">
@@ -157,6 +180,16 @@ export default async function BusinessProjectDetailPage({
             </div>
           )}
         </div>
+      </Card>
+      <Card className="py-0">
+        <CardHeader className="flex-row items-center justify-between py-4">
+          <div><CardTitle>프로젝트 문서</CardTitle><p className="mt-1 text-xs text-muted-foreground">용역건을 만들기 전 받은 견적서·계약서와 공통 자료를 보관해.</p></div>
+          {canManage ? <DocumentUploadDialog ownerId={project.id} ownerType="business_project" /> : null}
+        </CardHeader>
+        <DocumentList canAnalyze={canManage} documents={(documents ?? []).map((document) => {
+          const analysis = analysisMap.get(document.id);
+          return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, extractedData: analysis?.extracted_data ?? null };
+        })} />
       </Card>
     </section>
   );

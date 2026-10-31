@@ -4,12 +4,13 @@ import dynamic from "next/dynamic";
 import {
   CalendarDays,
   FileSignature,
-  FileText,
   MessageSquareText,
-  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
+import { DocumentList } from "@/components/documents/document-list";
+import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { ProjectStageBadge } from "@/components/projects/project-stage-badge";
 import { QuoteComparison } from "@/components/projects/quote-comparison";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Database } from "@/lib/database.types";
 import { formatDate, formatDateTime, formatWon } from "@/lib/format";
-import type { QuoteComparisonRow } from "@/lib/quotes";
+import { vatIncludedAmount, type QuoteComparisonRow } from "@/lib/quotes";
 
 const QuoteFormDialog = dynamic(
   () => import("@/components/projects/quote-form-dialog").then((module) => module.QuoteFormDialog),
@@ -61,6 +62,7 @@ export type ProjectDetailProps = {
   contracts: {
     id: string;
     title: string;
+    vendorId: string;
     vendorName: string;
     signedAt: string;
     amount: number;
@@ -84,8 +86,14 @@ export type ProjectDetailProps = {
     id: string;
     kind: string;
     fileName: string;
+    mimeType: string | null;
+    fileSize: number | null;
     version: number;
     createdAt: string;
+    analysisStatus: string | null;
+    analysisSummary: string | null;
+    analysisError: string | null;
+    extractedData: unknown;
   }[];
   canCreateQuote: boolean;
   canManageContracts: boolean;
@@ -93,6 +101,7 @@ export type ProjectDetailProps = {
   canManageMeetings: boolean;
   meetingUsers: { id: string; name: string }[];
   canSelect: boolean;
+  canManageDocuments: boolean;
   defaultTab: string;
 };
 
@@ -110,9 +119,18 @@ export function ProjectDetail({
   canManageMeetings,
   meetingUsers,
   canSelect,
+  canManageDocuments,
   defaultTab,
 }: ProjectDetailProps) {
   const participantOptions = participants.map(({ id, name }) => ({ id, name }));
+  const latestQuoteByVendor = useMemo(() => {
+    const latest = new Map<string, QuoteComparisonRow>();
+    for (const quote of quotes) {
+      const current = latest.get(quote.vendorId);
+      if (!current || quote.version > current.version) latest.set(quote.vendorId, quote);
+    }
+    return latest;
+  }, [quotes]);
   return (
     <section className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -267,21 +285,26 @@ export function ProjectDetail({
             <Card className="py-0">
               <div className="divide-y">
                 {contracts.length ? (
-                  contracts.map((contract) => (
-                    <Link
-                      key={contract.id}
-                      className="flex flex-col gap-2 p-4 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
-                      href={`/contracts/${contract.id}`}
-                    >
-                      <div>
-                        <p className="font-semibold">{contract.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {contract.vendorName} · {formatDate(contract.signedAt)}
-                        </p>
-                      </div>
-                      <p className="font-bold">{formatWon(contract.amount + contract.vat)}</p>
-                    </Link>
-                  ))
+                  contracts.map((contract) => {
+                    const latestQuote = latestQuoteByVendor.get(contract.vendorId);
+                    const difference = latestQuote
+                      ? contract.amount + contract.vat - vatIncludedAmount(latestQuote)
+                      : null;
+                    return (
+                      <Link key={contract.id} className="flex flex-col gap-2 p-4 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between" href={`/contracts/${contract.id}`}>
+                        <div>
+                          <p className="font-semibold">{contract.title}</p>
+                          <p className="text-sm text-muted-foreground">{contract.vendorName} · {formatDate(contract.signedAt)}</p>
+                          {latestQuote && difference != null ? (
+                            <p className={difference > 0 ? "mt-1 text-xs text-red-600" : difference < 0 ? "mt-1 text-xs text-blue-600" : "mt-1 text-xs text-muted-foreground"}>
+                              최신 견적 {formatWon(vatIncludedAmount(latestQuote))} 대비 {difference > 0 ? "+" : ""}{formatWon(difference)}
+                            </p>
+                          ) : null}
+                        </div>
+                        <p className="font-bold">{formatWon(contract.amount + contract.vat)}</p>
+                      </Link>
+                    );
+                  })
                 ) : (
                   <div className="p-10 text-center text-muted-foreground">
                     <FileSignature className="mx-auto mb-2 size-7" />
@@ -369,28 +392,10 @@ export function ProjectDetail({
           </Card>
         </TabsContent>
         <TabsContent value="documents">
-          <Card className="py-0">
-            <div className="divide-y">
-              {documents.length ? (
-                documents.map((document) => (
-                  <div key={document.id} className="flex items-center justify-between gap-3 p-4">
-                    <div>
-                      <p className="font-semibold">{document.fileName}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {document.kind} · v{document.version} · {formatDate(document.createdAt)}
-                      </p>
-                    </div>
-                    <FileText className="size-5 text-muted-foreground" />
-                  </div>
-                ))
-              ) : (
-                <div className="p-10 text-center text-muted-foreground">
-                  <WalletCards className="mx-auto mb-2 size-7" />
-                  등록된 문서가 없어.
-                </div>
-              )}
-            </div>
-          </Card>
+          <div className="space-y-3">
+            {canManageDocuments ? <div className="flex justify-end"><DocumentUploadDialog ownerId={project.id} ownerType="project" /></div> : null}
+            <Card className="py-0"><DocumentList canAnalyze={canManageDocuments} documents={documents} /></Card>
+          </div>
         </TabsContent>
       </Tabs>
     </section>

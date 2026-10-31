@@ -59,6 +59,8 @@ export function FileUploader({ vendorId }: { vendorId: string }) {
       kind,
       file_path: path,
       file_name: file.name,
+      mime_type: file.type,
+      file_size: file.size,
       valid_until: validUntil,
     });
     if (!result.ok) {
@@ -69,6 +71,10 @@ export function FileUploader({ vendorId }: { vendorId: string }) {
     }
 
     toast.success(result.message);
+    if (result.id) {
+      const response = await fetch(`/api/documents/${result.id}/analyze`, { method: "POST" });
+      if (!response.ok) toast.warning("원본은 등록했지만 자동 분석은 완료하지 못했어.");
+    }
     setUploading(false);
     setValidUntil("");
     if (inputRef.current) inputRef.current.value = "";
