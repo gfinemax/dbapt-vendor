@@ -141,7 +141,7 @@ export default async function ProjectDetailPage({
   const { data: documentAnalyses } = allDocuments.length
     ? await supabase
         .from("document_analyses")
-        .select("document_id,status,summary,error_message,extracted_data")
+        .select("document_id,status,progress_step,summary,error_message,extracted_data,updated_at")
         .in("document_id", allDocuments.map((document) => document.id))
         .is("deleted_at", null)
     : { data: [] };
@@ -222,8 +222,10 @@ export default async function ProjectDetailPage({
       version: document.version,
       createdAt: document.created_at,
       analysisStatus: documentAnalysisMap.get(document.id)?.status ?? null,
+      analysisProgressStep: documentAnalysisMap.get(document.id)?.progress_step ?? null,
       analysisSummary: documentAnalysisMap.get(document.id)?.summary ?? null,
       analysisError: documentAnalysisMap.get(document.id)?.error_message ?? null,
+      analysisUpdatedAt: documentAnalysisMap.get(document.id)?.updated_at ?? null,
       extractedData: documentAnalysisMap.get(document.id)?.extracted_data ?? null,
     })),
     canCreateQuote: role === "admin" || role === "staff" || role === "agent",

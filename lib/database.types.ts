@@ -641,6 +641,7 @@ export type Database = {
           extracted_data: NonNullable<Json>;
           id: string;
           model: string | null;
+          progress_step: string;
           reviewed_at: string | null;
           reviewed_by: string | null;
           schema_version: string;
@@ -668,6 +669,7 @@ export type Database = {
           extracted_data?: NonNullable<Json>;
           id?: string;
           model?: string | null;
+          progress_step?: string;
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           schema_version?: string;
@@ -694,6 +696,7 @@ export type Database = {
           extracted_data?: NonNullable<Json>;
           id?: string;
           model?: string | null;
+          progress_step?: string;
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           schema_version?: string;

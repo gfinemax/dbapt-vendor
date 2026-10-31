@@ -130,7 +130,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const { data: documentAnalyses } = mergedDocuments.length
     ? await supabase
         .from("document_analyses")
-        .select("document_id,status,summary,error_message,extracted_data")
+        .select("document_id,status,progress_step,summary,error_message,extracted_data,updated_at")
         .in("document_id", mergedDocuments.map((document) => document.id))
         .is("deleted_at", null)
     : { data: [] };
@@ -295,7 +295,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </CardTitle>
             {canManage ? <DocumentUploadDialog defaultKind="계약서" ownerId={rootId} ownerType="contract" /> : null}
           </CardHeader>
-          <CardContent className="p-0"><DocumentList canAnalyze={canManage} documents={mergedDocuments.map((document) => { const analysis = documentAnalysisMap.get(document.id); return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, extractedData: analysis?.extracted_data ?? null }; })} /></CardContent>
+          <CardContent className="p-0"><DocumentList canAnalyze={canManage} documents={mergedDocuments.map((document) => { const analysis = documentAnalysisMap.get(document.id); return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisProgressStep: analysis?.progress_step ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, analysisUpdatedAt: analysis?.updated_at ?? null, extractedData: analysis?.extracted_data ?? null }; })} /></CardContent>
         </Card>
       </div>
       <Card className="py-0">

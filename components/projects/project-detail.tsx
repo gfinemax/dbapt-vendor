@@ -91,8 +91,10 @@ export type ProjectDetailProps = {
     version: number;
     createdAt: string;
     analysisStatus: string | null;
+    analysisProgressStep: string | null;
     analysisSummary: string | null;
     analysisError: string | null;
+    analysisUpdatedAt?: string | null;
     extractedData: unknown;
   }[];
   canCreateQuote: boolean;

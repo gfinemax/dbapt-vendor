@@ -4,7 +4,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarClock,
-  Download,
   FileText,
   History,
   Mail,
@@ -19,14 +18,14 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
-import { deactivateVendorContact, getDocumentDownloadUrl } from "@/app/(main)/vendors/actions";
-import { DocumentViewerDialog } from "@/components/documents/document-viewer-dialog";
+import { deactivateVendorContact } from "@/app/(main)/vendors/actions";
+import { DocumentList, type DocumentListItem } from "@/components/documents/document-list";
 import { VendorStatusBadge } from "@/components/vendors/vendor-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { dDay, formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 import type { VendorContactInput, VendorInput } from "@/lib/validators/vendor";
 
@@ -60,14 +59,13 @@ export type VendorDetailProps = {
   canImportGoogleContacts: boolean;
   googleContactsConnected: boolean;
   contactSyncs: Array<{ vendor_contact_id: string; google_resource_name: string | null; last_synced_at: string | null }>;
-  defaultTab: "basic" | "contacts";
+  defaultTab: "basic" | "contacts" | "projects" | "documents" | "logs" | "reviews";
   contacts: Array<VendorContactInput & { id: string; created_at: string }>;
   projects: Array<{ id: string; title: string; category: string | null; stage: ProjectStage; role: string }>;
-  documents: Array<{ id: string; kind: string; file_name: string; version: number; valid_until: string | null; created_at: string }>;
+  documents: DocumentListItem[];
   logs: Array<{ id: string; method: string; at: string; summary: string; contact_name: string | null }>;
   reviews: Array<{ id: string; project_title: string; quality: number; schedule: number; communication: number; comment: string | null; created_at: string }>;
   timeline: Array<{ id: string; kind: string; title: string; date: string; description: string | null; href: string | null }>;
-  todayKst: string;
   defaultContactAt: string;
 };
 
@@ -75,17 +73,7 @@ function LabelValue({ label, children }: { label: string; children: React.ReactN
   return <div><dt className="text-xs font-medium text-muted-foreground">{label}</dt><dd className="mt-1 min-h-5 text-sm">{children || "-"}</dd></div>;
 }
 
-function expiryBadge(date: string | null, todayKst: string) {
-  if (!date) return null;
-  const target = new Date(`${date}T00:00:00Z`).getTime();
-  const today = new Date(`${todayKst}T00:00:00Z`).getTime();
-  const remaining = Math.round((target - today) / 86_400_000);
-  if (remaining < 0) return <Badge variant="destructive">만료 {dDay(date, todayKst)}</Badge>;
-  if (remaining <= 30) return <Badge className="border-amber-200 bg-amber-50 text-amber-700" variant="outline">만료 임박 {dDay(date, todayKst)}</Badge>;
-  return <Badge variant="secondary">{dDay(date, todayKst)}</Badge>;
-}
-
-export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googleContactsConnected, contactSyncs, defaultTab, contacts, projects, documents, logs, reviews, timeline, todayKst, defaultContactAt }: VendorDetailProps) {
+export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googleContactsConnected, contactSyncs, defaultTab, contacts, projects, documents, logs, reviews, timeline, defaultContactAt }: VendorDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const activeContacts = contacts.filter((contact) => contact.active);
@@ -100,17 +88,6 @@ export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googl
       }
       toast.success(result.message);
       router.refresh();
-    });
-  }
-
-  function download(documentId: string) {
-    startTransition(async () => {
-      const result = await getDocumentDownloadUrl(documentId);
-      if (!result.ok || !result.url) {
-        toast.error(result.message);
-        return;
-      }
-      window.location.assign(result.url);
     });
   }
 
@@ -132,7 +109,7 @@ export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googl
         <Card size="sm"><CardContent className="flex items-center gap-3"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><MessageSquare /></div><div><p className="text-xs text-muted-foreground">연락 이력</p><p className="text-xl font-bold">{logs.length}건</p></div></CardContent></Card>
       </div>
 
-      <Tabs defaultValue={defaultTab}>
+      <Tabs key={defaultTab} defaultValue={defaultTab}>
         <div className="overflow-x-auto pb-1"><TabsList variant="line"><TabsTrigger value="basic">기본정보</TabsTrigger><TabsTrigger value="contacts">담당자</TabsTrigger><TabsTrigger value="projects">참여 용역 건</TabsTrigger><TabsTrigger value="documents">서류</TabsTrigger><TabsTrigger value="logs">연락 이력</TabsTrigger><TabsTrigger value="reviews">평가</TabsTrigger></TabsList></div>
 
         <TabsContent value="basic">
@@ -155,7 +132,7 @@ export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googl
 
         <TabsContent value="documents" className="space-y-4">
           {canManage ? <FileUploader vendorId={vendor.id} /> : null}
-          <Card className="py-0"><div className="divide-y">{documents.length ? documents.map((document) => <div key={document.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{document.kind}</Badge><span className="truncate font-medium">{document.file_name}</span><span className="text-xs text-muted-foreground">v{document.version}</span>{expiryBadge(document.valid_until, todayKst)}</div><p className="mt-1 text-xs text-muted-foreground">등록 {formatDate(document.created_at)}{document.valid_until ? ` · 유효기간 ${formatDate(document.valid_until)}` : ""}</p></div><div className="flex gap-2"><DocumentViewerDialog documentId={document.id} fileName={document.file_name} /><Button disabled={pending} size="sm" variant="outline" onClick={() => download(document.id)}><Download />60초 다운로드</Button></div></div>) : <div className="p-10 text-center text-muted-foreground">등록된 서류가 없어.</div>}</div></Card>
+          <Card className="py-0"><DocumentList canAnalyze={canManage} documents={documents} /></Card>
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">

@@ -22,10 +22,15 @@ function getKstDateParts() {
 
 export default async function VendorDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
+  const allowedTabs = ["basic", "contacts", "projects", "documents", "logs", "reviews"] as const;
+  const defaultTab = allowedTabs.find((value) => value === tab) ?? "basic";
   const supabase = await createClient();
   const { data: role } = await supabase.rpc("current_role");
   const safeView = role === "agent" || role === "viewer";
@@ -63,7 +68,7 @@ export default async function VendorDetailPage({
       .is("deleted_at", null),
     supabase
       .from("documents")
-      .select("id,kind,file_name,version,valid_until,created_at")
+      .select("id,kind,file_name,mime_type,file_size,version,valid_until,created_at,document_analyses(status,progress_step,summary,error_message,extracted_data,updated_at)")
       .eq("owner_type", "vendor")
       .eq("owner_id", id)
       .is("deleted_at", null)
@@ -223,7 +228,7 @@ export default async function VendorDetailPage({
       canImportGoogleContacts={role === "admin"}
       googleContactsConnected={Boolean(googleConnectionResult.data) && getGoogleContactsMissingConfig().length === 0}
       contactSyncs={googleSyncsResult.data ?? []}
-      defaultTab="basic"
+      defaultTab={defaultTab}
       contacts={(contactsResult.data ?? []).map((contact) => ({
         id: contact.id,
         vendor_id: contact.vendor_id,
@@ -236,7 +241,27 @@ export default async function VendorDetailPage({
         active: contact.active,
         created_at: contact.created_at,
       }))}
-      documents={documentsResult.data ?? []}
+      documents={(documentsResult.data ?? []).map((document) => {
+        const analysis = Array.isArray(document.document_analyses)
+          ? document.document_analyses[0]
+          : document.document_analyses;
+        return {
+          id: document.id,
+          kind: document.kind,
+          fileName: document.file_name,
+          mimeType: document.mime_type,
+          fileSize: document.file_size,
+          version: document.version,
+          validUntil: document.valid_until,
+          createdAt: document.created_at,
+          analysisStatus: analysis?.status ?? null,
+          analysisProgressStep: analysis?.progress_step ?? null,
+          analysisSummary: analysis?.summary ?? null,
+          analysisError: analysis?.error_message ?? null,
+          analysisUpdatedAt: analysis?.updated_at ?? null,
+          extractedData: analysis?.extracted_data ?? null,
+        };
+      })}
       logs={(logsResult.data ?? []).map((log) => ({
         ...log,
         contact_name: log.contact_id ? (contactMap.get(log.contact_id) ?? null) : null,
@@ -260,7 +285,6 @@ export default async function VendorDetailPage({
         project_title: projectMap.get(review.project_id)?.title ?? "용역 건",
       }))}
       timeline={timeline}
-      todayKst={kst.date}
       defaultContactAt={kst.dateTime}
       vendor={detailVendor}
     />

@@ -48,12 +48,47 @@ const systemPrompt = `너는 대한민국 지역주택조합의 용역 문서 �
 불리하거나 모호한 조항과 필수값 누락은 risks와 missing_fields에 분리해.
 개인 주민등록번호, 계좌번호 같은 불필요한 개인정보는 요약이나 근거에 복사하지 마.`;
 
+function validDocumentId(id: string) {
+  return /^[0-9a-f-]{36}$/i.test(id);
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  if (!validDocumentId(id))
+    return NextResponse.json({ ok: false, message: "문서 정보가 올바르지 않아." }, { status: 400 });
+
+  const actor = await getActor();
+  if (actor.error || !actor.supabase || !actor.userId)
+    return NextResponse.json({ ok: false, message: actor.error ?? "로그인이 필요해." }, { status: 401 });
+
+  const { data, error } = await actor.supabase
+    .from("document_analyses")
+    .select("status,progress_step,summary,error_message,updated_at")
+    .eq("document_id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error)
+    return NextResponse.json({ ok: false, message: "분석 진행상태를 불러오지 못했어." }, { status: 500 });
+
+  return NextResponse.json({
+    ok: true,
+    status: data?.status ?? null,
+    progressStep: data?.progress_step ?? "registered",
+    summary: data?.summary ?? null,
+    error: data?.error_message ?? null,
+    updatedAt: data?.updated_at ?? null,
+  });
+}
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(id))
+  if (!validDocumentId(id))
     return NextResponse.json({ ok: false, message: "문서 정보가 올바르지 않아." }, { status: 400 });
 
   const actor = await getActor();
@@ -91,6 +126,7 @@ export async function POST(
     {
       document_id: document.id,
       status: "analyzing",
+      progress_step: "queued",
       detected_kind: document.kind,
       error_message: null,
       applied_project_id: initialProjectId,
@@ -108,6 +144,7 @@ export async function POST(
       .from("document_analyses")
       .update({
         status: "review_required",
+        progress_step: "review_required",
         summary: message,
         error_message: null,
         analyzed_at: new Date().toISOString(),
@@ -116,14 +153,22 @@ export async function POST(
     return NextResponse.json({ ok: true, message, analysis: null });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    const message = "OPENAI_API_KEY가 설정되지 않아 원본만 등록했어.";
+  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const directOpenAiKey = process.env.OPENAI_API_KEY;
+  const useGateway = Boolean(gatewayToken);
+  if (!gatewayToken && !directOpenAiKey) {
+    const message = "AI 분석 인증정보가 설정되지 않아 원본만 등록했어.";
     await actor.supabase
       .from("document_analyses")
       .update({ status: "failed", error_message: message })
       .eq("document_id", document.id);
     return NextResponse.json({ ok: false, message }, { status: 503 });
   }
+
+  await actor.supabase
+    .from("document_analyses")
+    .update({ progress_step: "loading_file" })
+    .eq("document_id", document.id);
 
   const { data: blob, error: downloadError } = await actor.supabase.storage
     .from("vendor-files")
@@ -149,10 +194,25 @@ export async function POST(
 
   const mimeType = document.mime_type || blob.type || fallbackMimeType(document.file_name);
   const dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
-  const model = process.env.OPENAI_DOCUMENT_MODEL || "gpt-4.1-mini";
+  const configuredModel = process.env.OPENAI_DOCUMENT_MODEL;
+  const model = configuredModel
+    ? useGateway && !configuredModel.includes("/")
+      ? `openai/${configuredModel}`
+      : configuredModel
+    : useGateway
+      ? "openai/gpt-4.1-mini"
+      : "gpt-4.1-mini";
 
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    await actor.supabase
+      .from("document_analyses")
+      .update({ progress_step: "analyzing" })
+      .eq("document_id", document.id);
+
+    const openai = new OpenAI({
+      apiKey: gatewayToken || directOpenAiKey,
+      ...(useGateway ? { baseURL: "https://ai-gateway.vercel.sh/v1" } : {}),
+    });
     const image = mimeType.startsWith("image/");
     const fileContent = image
       ? ({ type: "input_image", image_url: dataUrl, detail: "high" } as const)
@@ -185,10 +245,16 @@ export async function POST(
     const extraction = response.output_parsed;
     if (!extraction) throw new Error("구조화된 분석 결과가 없어.");
 
+    await actor.supabase
+      .from("document_analyses")
+      .update({ progress_step: "saving" })
+      .eq("document_id", document.id);
+
     const { error: saveError } = await actor.supabase
       .from("document_analyses")
       .update({
         status: "review_required",
+        progress_step: "review_required",
         detected_kind: extraction.detected_kind,
         summary: extraction.summary,
         extracted_data: extraction as unknown as NonNullable<Json>,

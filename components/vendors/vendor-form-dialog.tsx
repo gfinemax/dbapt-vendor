@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, FileText, Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   allowedDocumentExtensions,
+  documentAnalysisProgressLabel,
   documentKindStorageSegment,
   documentExtension,
   MAX_DOCUMENT_SIZE,
@@ -51,6 +52,41 @@ const emptyVendor: VendorInput = {
   internal_note: "",
 };
 
+type UploadStage =
+  | "selected"
+  | "uploading"
+  | "registering"
+  | "registered"
+  | "queued"
+  | "loading_file"
+  | "analyzing"
+  | "saving"
+  | "review_required"
+  | "applied"
+  | "failed";
+
+type UploadProgress = {
+  kind: "견적서" | "계약서";
+  fileName: string;
+  stage: UploadStage;
+  message: string | null;
+};
+
+function uploadStageLabel(stage: UploadStage) {
+  switch (stage) {
+    case "selected":
+      return "파일 선택 완료";
+    case "uploading":
+      return "원본 업로드 중";
+    case "registering":
+      return "문서 정보 등록 중";
+    case "failed":
+      return "처리 실패";
+    default:
+      return documentAnalysisProgressLabel(stage);
+  }
+}
+
 export function VendorFormDialog({
   vendor,
   triggerLabel,
@@ -65,6 +101,7 @@ export function VendorFormDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
   const [contractFile, setContractFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(vendor?.id);
   const form = useForm<VendorInput>({
@@ -78,6 +115,7 @@ export function VendorFormDialog({
       setSubmitError(null);
       setQuoteFile(null);
       setContractFile(null);
+      setUploadProgress([]);
       if (quoteInputRef.current) quoteInputRef.current.value = "";
       if (contractInputRef.current) contractInputRef.current.value = "";
     }
@@ -96,35 +134,74 @@ export function VendorFormDialog({
     kind: "견적서" | "계약서",
     file: File,
   ) {
+    const updateProgress = (stage: UploadStage, message: string | null = null) => {
+      setUploadProgress((current) => current.map((item) =>
+        item.kind === kind ? { ...item, stage, message } : item,
+      ));
+    };
     const supabase = createClient();
     const path = `vendor/${vendorId}/${documentKindStorageSegment(kind)}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from("vendor-files")
-      .upload(path, file, {
-        cacheControl: "3600",
-        contentType: file.type || undefined,
-        upsert: false,
+    try {
+      updateProgress("uploading");
+      const { error: uploadError } = await supabase.storage
+        .from("vendor-files")
+        .upload(path, file, {
+          cacheControl: "3600",
+          contentType: file.type || undefined,
+          upsert: false,
+        });
+      if (uploadError) throw new Error(`${kind}를 업로드하지 못했어: ${uploadError.message}`);
+
+      updateProgress("registering");
+      const registered = await createVendorDocument({
+        owner_id: vendorId,
+        kind,
+        file_path: path,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size: file.size,
+        valid_until: "",
       });
-    if (uploadError) throw new Error(`${kind}를 업로드하지 못했어: ${uploadError.message}`);
+      if (!registered.ok || !registered.id) {
+        await supabase.storage.from("vendor-files").remove([path]);
+        throw new Error(`${kind}를 등록하지 못했어: ${registered.message}`);
+      }
 
-    const registered = await createVendorDocument({
-      owner_id: vendorId,
-      kind,
-      file_path: path,
-      file_name: file.name,
-      mime_type: file.type,
-      file_size: file.size,
-      valid_until: "",
-    });
-    if (!registered.ok || !registered.id) {
-      await supabase.storage.from("vendor-files").remove([path]);
-      throw new Error(`${kind}를 등록하지 못했어: ${registered.message}`);
+      updateProgress("queued");
+      const pollTimer = window.setInterval(async () => {
+        try {
+          const progressResponse = await fetch(`/api/documents/${registered.id}/analyze`, {
+            cache: "no-store",
+          });
+          if (!progressResponse.ok) return;
+          const progress = (await progressResponse.json()) as {
+            progressStep: UploadStage;
+            error: string | null;
+          };
+          updateProgress(progress.progressStep, progress.error);
+        } catch {
+          // 원본 등록과 분석 POST는 계속 진행되므로 상태 조회만 다음 주기에 재시도한다.
+        }
+      }, 900);
+      try {
+        const response = await fetch(`/api/documents/${registered.id}/analyze`, {
+          method: "POST",
+        });
+        const result = (await response.json()) as { ok: boolean; message: string };
+        if (!response.ok || !result.ok) {
+          updateProgress("failed", result.message);
+          return { analysisOk: false, message: result.message };
+        }
+        updateProgress("review_required", result.message);
+        return { analysisOk: true, message: result.message };
+      } finally {
+        window.clearInterval(pollTimer);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${kind} 처리 중 오류가 발생했어.`;
+      updateProgress("failed", message);
+      throw error;
     }
-
-    const response = await fetch(`/api/documents/${registered.id}/analyze`, {
-      method: "POST",
-    });
-    return response.ok;
   }
 
   function onSubmit(values: VendorInput) {
@@ -138,6 +215,18 @@ export function VendorFormDialog({
     }
 
     setSubmitError(null);
+    const initialDocuments = editing
+      ? [
+          ...(quoteFile ? [{ kind: "견적서" as const, file: quoteFile }] : []),
+          ...(contractFile ? [{ kind: "계약서" as const, file: contractFile }] : []),
+        ]
+      : [];
+    setUploadProgress(initialDocuments.map((document) => ({
+      kind: document.kind,
+      fileName: document.file.name,
+      stage: "selected",
+      message: null,
+    })));
     startTransition(async () => {
       let vendorSaved = false;
       try {
@@ -149,12 +238,7 @@ export function VendorFormDialog({
         }
         vendorSaved = true;
 
-        const selectedDocuments = editing && result.id
-          ? [
-              ...(quoteFile ? [{ kind: "견적서" as const, file: quoteFile }] : []),
-              ...(contractFile ? [{ kind: "계약서" as const, file: contractFile }] : []),
-            ]
-          : [];
+        const selectedDocuments = editing && result.id ? initialDocuments : [];
         const uploadResults = result.id
           ? await Promise.allSettled(
               selectedDocuments.map((document) =>
@@ -163,7 +247,7 @@ export function VendorFormDialog({
             )
           : [];
         const uploadErrors: string[] = [];
-        let analysisFailures = 0;
+        const analysisFailureMessages: string[] = [];
         uploadResults.forEach((uploadResult, index) => {
           const selected = selectedDocuments[index];
           if (uploadResult.status === "rejected") {
@@ -174,7 +258,7 @@ export function VendorFormDialog({
             );
             return;
           }
-          if (!uploadResult.value) analysisFailures += 1;
+          if (!uploadResult.value.analysisOk) analysisFailureMessages.push(uploadResult.value.message);
           if (selected.kind === "견적서") {
             setQuoteFile(null);
             if (quoteInputRef.current) quoteInputRef.current.value = "";
@@ -191,12 +275,18 @@ export function VendorFormDialog({
             ? `${result.message} 견적서·계약서 ${uploadedCount}건도 등록했어.`
             : result.message,
         );
-        if (analysisFailures) {
-          toast.warning(`${analysisFailures}건은 원본을 등록했지만 자동 분석은 완료하지 못했어.`);
+        if (analysisFailureMessages.length) {
+          const warning = `${analysisFailureMessages.length}건은 원본을 등록했지만 자동 분석은 완료하지 못했어. ${analysisFailureMessages.join(" ")}`;
+          setSubmitError(warning);
+          toast.warning(warning);
+          router.refresh();
+          return;
         }
         setOpen(false);
         if (!editing && result.id) {
           router.push(`/vendors/${result.id}`);
+        } else if (uploadedCount && result.id) {
+          router.push(`/vendors/${result.id}?tab=documents`);
         } else {
           router.refresh();
         }
@@ -334,6 +424,33 @@ export function VendorFormDialog({
                   </label>
                 </div>
                 <p className="text-xs text-muted-foreground">파일당 최대 20MB · 등록 후 주요 내용을 자동 분석해.</p>
+                {uploadProgress.length ? (
+                  <div aria-live="polite" className="space-y-2 rounded-lg border bg-background p-3">
+                    <p className="text-xs font-semibold">등록·자동분석 진행상태</p>
+                    {uploadProgress.map((item) => {
+                      const failed = item.stage === "failed";
+                      const finished = item.stage === "review_required" || item.stage === "applied";
+                      return (
+                        <div key={item.kind} className="flex items-start gap-2 text-xs">
+                          {failed ? (
+                            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                          ) : finished ? (
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                          ) : (
+                            <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-blue-600" />
+                          )}
+                          <div className="min-w-0">
+                            <p className={failed ? "font-medium text-destructive" : "font-medium"}>
+                              {item.kind} · {uploadStageLabel(item.stage)}
+                            </p>
+                            <p className="truncate text-muted-foreground">{item.fileName}</p>
+                            {item.message ? <p className={failed ? "mt-1 text-destructive" : "mt-1 text-muted-foreground"}>{item.message}</p> : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </section>
             ) : null}
             {submitError ? (

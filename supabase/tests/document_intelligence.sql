@@ -2,11 +2,12 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
-select plan(13);
+select plan(15);
 
 select has_table('public', 'document_analyses', 'document analysis table exists');
 select has_column('public', 'documents', 'mime_type', 'documents preserve mime type');
 select has_column('public', 'documents', 'file_size', 'documents preserve file size');
+select has_column('public', 'document_analyses', 'progress_step', 'analysis progress step is persisted');
 
 set local role authenticated;
 select set_config(
@@ -73,6 +74,11 @@ select is(
   (select count(*) from public.document_analyses where document_id in ('70000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000002') and status = 'applied' and applied_project_id is not null),
   2::bigint,
   'both document analyses retain their applied project provenance'
+);
+select is(
+  (select count(*) from public.document_analyses where document_id in ('70000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000002') and progress_step = 'applied'),
+  2::bigint,
+  'applied analyses expose the final progress step'
 );
 select ok(
   (select count(*) > 0 from public.audit_logs where table_name = 'document_analyses'),

@@ -61,7 +61,7 @@ export default async function BusinessProjectDetailPage({
     documentIds.length
       ? supabase
           .from("document_analyses")
-          .select("document_id,status,summary,error_message,extracted_data")
+          .select("document_id,status,progress_step,summary,error_message,extracted_data,updated_at")
           .in("document_id", documentIds)
           .is("deleted_at", null)
       : Promise.resolve({ data: [] }),
@@ -188,7 +188,7 @@ export default async function BusinessProjectDetailPage({
         </CardHeader>
         <DocumentList canAnalyze={canManage} documents={(documents ?? []).map((document) => {
           const analysis = analysisMap.get(document.id);
-          return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, extractedData: analysis?.extracted_data ?? null };
+          return { id: document.id, kind: document.kind, fileName: document.file_name, mimeType: document.mime_type, fileSize: document.file_size, version: document.version, createdAt: document.created_at, analysisStatus: analysis?.status ?? null, analysisProgressStep: analysis?.progress_step ?? null, analysisSummary: analysis?.summary ?? null, analysisError: analysis?.error_message ?? null, analysisUpdatedAt: analysis?.updated_at ?? null, extractedData: analysis?.extracted_data ?? null };
         })} />
       </Card>
     </section>

@@ -5,6 +5,62 @@ import {
 
 export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 
+export const documentAnalysisProgressSteps = [
+  "registered",
+  "loading_file",
+  "analyzing",
+  "saving",
+  "review_required",
+] as const;
+
+export type DocumentAnalysisProgressStep =
+  | (typeof documentAnalysisProgressSteps)[number]
+  | "queued"
+  | "applied";
+
+export function documentAnalysisProgressLabel(
+  step: DocumentAnalysisProgressStep | string | null,
+) {
+  switch (step) {
+    case "registered":
+      return "원본 등록";
+    case "queued":
+      return "분석 대기";
+    case "loading_file":
+      return "파일 확인";
+    case "analyzing":
+      return "AI 분석";
+    case "saving":
+      return "결과 저장";
+    case "review_required":
+      return "검토 필요";
+    case "applied":
+      return "반영 완료";
+    default:
+      return "원본 등록";
+  }
+}
+
+export function documentAnalysisProgressIndex(
+  step: DocumentAnalysisProgressStep | string | null,
+) {
+  switch (step) {
+    case "queued":
+      return 1;
+    case "loading_file":
+      return 2;
+    case "analyzing":
+      return 3;
+    case "saving":
+      return 4;
+    case "review_required":
+    case "applied":
+      return 5;
+    default:
+      return 0;
+  }
+}
+
 export const allowedDocumentExtensions = new Set([
   "pdf",
   "png",
