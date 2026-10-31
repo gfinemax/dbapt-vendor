@@ -257,6 +257,34 @@ export async function POST(
       .eq("document_id", document.id);
     if (saveError) throw new Error("분석 결과를 저장하지 못했어.");
 
+    const hasVendorProfile = Object.values(extraction.vendor).some(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    );
+    if (
+      document.owner_type === "vendor" &&
+      (actor.role === "admin" || actor.role === "staff") &&
+      hasVendorProfile
+    ) {
+      const { error: applyError } = await actor.supabase.rpc(
+        "apply_vendor_profile_from_document",
+        { document_id_value: document.id },
+      );
+      if (applyError) {
+        const message = applyError.message.includes("vendors_active_biz_no_uidx")
+          ? "분석은 완료했지만 추출된 사업자번호가 다른 업체에 이미 등록돼 있어 기본정보에는 반영하지 못했어."
+          : "분석은 완료했지만 업체 기본정보에는 자동 반영하지 못했어. 서류 탭에서 추출값을 확인해 줘.";
+        return NextResponse.json(
+          { ok: false, message, analysis: extraction },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({
+        ok: true,
+        message: "문서 분석을 마치고 추출된 업체 기본정보까지 반영했어.",
+        analysis: extraction,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       message: "문서 분석을 마쳤어. 추출값을 확인해 줘.",
