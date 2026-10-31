@@ -63,7 +63,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const timeline: VendorDetailProps["timeline"] = [
     ...(quotesResult.data ?? []).map((quote) => ({ id: `quote-${quote.id}`, kind: "견적", title: `${projectMap.get(quote.project_id)?.title ?? "용역"} 견적 v${quote.version}`, date: quote.received_at, description: `${Number(quote.amount).toLocaleString("ko-KR")}원`, href: `/projects/${quote.project_id}` })),
     ...(contractsResult.data ?? []).map((contract) => ({ id: `contract-${contract.id}`, kind: "계약", title: contract.title, date: contract.signed_at, description: `${Number(contract.amount + contract.vat).toLocaleString("ko-KR")}원`, href: "/contracts" })),
-    ...(meetingsResult.data ?? []).map((meeting) => ({ id: `meeting-${meeting.id}`, kind: "협의", title: meeting.agenda, date: meeting.held_at, description: meeting.method, href: "/meetings" })),
+    ...(meetingsResult.data ?? []).map((meeting) => ({ id: `meeting-${meeting.id}`, kind: "협의", title: meeting.agenda, date: meeting.held_at, description: meeting.method, href: `/meetings/${meeting.id}` })),
     ...(eventRows ?? []).map((event) => ({ id: `event-${event.id}`, kind: "일정", title: event.title, date: event.date, description: `${event.type} · ${event.status}`, href: "/schedule" })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 

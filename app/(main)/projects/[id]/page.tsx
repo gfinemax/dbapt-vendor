@@ -55,6 +55,8 @@ export default async function ProjectDetailPage({ params, searchParams }: { para
     documents: (documentsResult.data ?? []).map((document) => ({ id: document.id, kind: document.kind, fileName: document.file_name, version: document.version, createdAt: document.created_at })),
     canCreateQuote: role === "admin" || role === "staff" || role === "agent",
     canManageContracts: role === "admin" || role === "staff" || role === "agent",
+    canManageMeetings: role === "admin" || role === "staff" || role === "agent",
+    meetingUsers: usersResult.data ?? [],
     canSelect: role === "admin" || role === "executive",
     defaultTab: query.tab ?? "overview",
   };

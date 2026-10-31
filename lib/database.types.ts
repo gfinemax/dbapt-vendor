@@ -1374,6 +1374,21 @@ export type Database = {
         }
         Returns: string
       }
+      create_meeting_with_actions: {
+        Args: {
+          action_rows?: Json
+          agenda_value: string
+          attendees_union_value: string
+          attendees_vendor_value: string
+          decisions_value: string
+          held_at_value: string
+          method_value: string
+          notes_value: string
+          project_id_value: string
+          vendor_id_value: string | null
+        }
+        Returns: string
+      }
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
