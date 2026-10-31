@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 
 export function TopBar({ email }: { email: string }) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur print:hidden md:px-6">
       <div className="flex items-center gap-3">
         <Sheet>
           <SheetTrigger asChild>

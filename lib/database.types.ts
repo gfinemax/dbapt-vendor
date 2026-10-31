@@ -1360,6 +1360,15 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       mark_overdue_events: { Args: never; Returns: number }
+      select_project_vendor: {
+        Args: {
+          board_resolution_value: string
+          selection_reason_value: string
+          target_project_id: string
+          target_vendor_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       event_status: "예정" | "진행" | "완료" | "지연"

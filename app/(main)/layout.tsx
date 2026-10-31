@@ -19,13 +19,13 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-svh bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-background md:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-background print:hidden md:block">
         <SidebarBrand />
         <AppSidebar />
       </aside>
-      <div className="md:pl-64">
+      <div className="print:pl-0 md:pl-64">
         <TopBar email={email} />
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="p-4 print:p-0 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
