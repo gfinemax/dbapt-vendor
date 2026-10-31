@@ -28,6 +28,7 @@ export function GoogleContactImportDialog({ vendorId }: { vendorId: string }) {
   const [contacts, setContacts] = useState<GoogleContactListItem[]>([]);
   const [query, setQuery] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -48,15 +49,25 @@ export function GoogleContactImportDialog({ vendorId }: { vendorId: string }) {
 
   function loadContacts() {
     startTransition(async () => {
-      const result = await listGoogleContactsForImport();
-      setLoaded(true);
-      if (!result.ok) {
+      setLoadError(null);
+      try {
+        const result = await listGoogleContactsForImport();
+        setLoaded(true);
+        if (!result.ok) {
+          setContacts([]);
+          setLoadError(result.message);
+          toast.error(result.message);
+          return;
+        }
+        setContacts(result.contacts);
+        toast.success(result.message);
+      } catch {
+        const message = "배포 후 화면 정보가 갱신되지 않았어. 페이지를 새로고침해 줘.";
+        setLoaded(true);
         setContacts([]);
-        toast.error(result.message);
-        return;
+        setLoadError(message);
+        toast.error(message);
       }
-      setContacts(result.contacts);
-      toast.success(result.message);
     });
   }
 
@@ -68,22 +79,27 @@ export function GoogleContactImportDialog({ vendorId }: { vendorId: string }) {
   function importContact(contact: GoogleContactListItem) {
     setImporting(contact.resourceName);
     startTransition(async () => {
-      const result = await importGoogleContact({
-        vendorId,
-        resourceName: contact.resourceName,
-      });
-      setImporting(null);
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
+      try {
+        const result = await importGoogleContact({
+          vendorId,
+          resourceName: contact.resourceName,
+        });
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+        setContacts((current) =>
+          current.map((item) =>
+            item.resourceName === contact.resourceName ? { ...item, imported: true } : item,
+          ),
+        );
+        toast.success(result.message);
+        router.refresh();
+      } catch {
+        toast.error("배포 후 화면 정보가 갱신되지 않았어. 페이지를 새로고침해 줘.");
+      } finally {
+        setImporting(null);
       }
-      setContacts((current) =>
-        current.map((item) =>
-          item.resourceName === contact.resourceName ? { ...item, imported: true } : item,
-        ),
-      );
-      toast.success(result.message);
-      router.refresh();
     });
   }
 
@@ -116,7 +132,12 @@ export function GoogleContactImportDialog({ vendorId }: { vendorId: string }) {
         </div>
 
         <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
-          {pending && !loaded ? (
+          {loadError ? (
+            <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-destructive">
+              <p>{loadError}</p>
+              <Button variant="outline" onClick={() => window.location.reload()}><RefreshCw />페이지 새로고침</Button>
+            </div>
+          ) : pending && !loaded ? (
             <div className="flex min-h-40 items-center justify-center text-muted-foreground"><RefreshCw className="mr-2 size-5 animate-spin" />불러오는 중...</div>
           ) : filteredContacts.length ? filteredContacts.map((contact) => (
             <div key={contact.resourceName} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
