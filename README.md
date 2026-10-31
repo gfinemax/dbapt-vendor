@@ -47,13 +47,15 @@ GOOGLE_CONTACTS_TOKEN_ENCRYPTION_KEY=
 
 ## Google 연락처 연동
 
-연동 방향은 DB-Vendor에서 Google 연락처로 보내는 단방향이야. 관리자만 설정에서 공용 Google 계정을 연결하고, 업체 상세의 담당자 탭에서 필요한 담당자를 한 명씩 동기화할 수 있어. 관계인과 내부 검토의견은 전송하지 않아.
+연동 방향은 Google 연락처에서 DB-Vendor로 가져오는 읽기 전용 단방향이야. 관리자만 설정에서 공용 Google 계정을 연결하고, 업체 상세의 담당자 탭에서 Google 연락처를 검색해 필요한 사람을 한 명씩 가져올 수 있어. Google 연락처를 생성·수정·삭제하지 않고, 이름이 같다는 이유로 자동 병합하지 않아.
 
 1. Google Cloud에서 People API를 사용 설정해.
 2. OAuth 동의 화면과 웹 애플리케이션 OAuth 클라이언트를 만들어.
 3. 승인된 리디렉션 URI에 운영 주소의 `/api/integrations/google-contacts/callback`을 등록해.
 4. Client ID, Client Secret, 동일한 Redirect URI와 암호화 키를 Vercel 환경 변수에 저장해.
 5. 배포 후 `/settings`에서 Google 계정을 연결해.
+
+OAuth 권한은 `contacts.readonly`만 요청해. 기존에 쓰기 권한으로 연결했던 계정은 Google 계정 권한에서 기존 승인을 철회한 뒤 다시 연결하면 읽기 전용 동의 화면을 확인할 수 있어.
 
 암호화 키는 PowerShell에서 다음처럼 만들 수 있어. 출력값은 비밀로 보관하고 저장소에 커밋하지 않아.
 

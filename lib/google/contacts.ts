@@ -6,12 +6,12 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 const GOOGLE_PEOPLE_URL = "https://people.googleapis.com/v1";
-const CONTACT_FIELDS = "names,emailAddresses,phoneNumbers,organizations,biographies,metadata";
+const CONTACT_FIELDS = "names,emailAddresses,phoneNumbers,organizations,metadata";
 
 export const GOOGLE_CONTACTS_SCOPES = [
   "openid",
   "email",
-  "https://www.googleapis.com/auth/contacts",
+  "https://www.googleapis.com/auth/contacts.readonly",
 ] as const;
 
 type GoogleContactsConfig = {
@@ -27,20 +27,43 @@ export type EncryptedGoogleToken = {
   tag: string;
 };
 
-export type GoogleContactPayload = {
-  name: string;
-  phone: string | null;
-  email: string | null;
-  title: string | null;
-  duty: string | null;
-  vendorName: string;
-  vendorCategory: string | null;
+type GoogleFieldMetadata = {
+  primary?: boolean;
 };
 
 type GooglePerson = {
   resourceName?: string;
   etag?: string;
-  metadata?: { sources?: Array<Record<string, unknown>> };
+  metadata?: { deleted?: boolean };
+  names?: Array<{
+    displayName?: string;
+    unstructuredName?: string;
+    metadata?: GoogleFieldMetadata;
+  }>;
+  emailAddresses?: Array<{ value?: string; metadata?: GoogleFieldMetadata }>;
+  phoneNumbers?: Array<{
+    value?: string;
+    canonicalForm?: string;
+    metadata?: GoogleFieldMetadata;
+  }>;
+  organizations?: Array<{
+    name?: string;
+    title?: string;
+    department?: string;
+    current?: boolean;
+    metadata?: GoogleFieldMetadata;
+  }>;
+};
+
+export type GoogleContactSummary = {
+  resourceName: string;
+  etag: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  organization: string | null;
+  title: string | null;
+  department: string | null;
 };
 
 export class GoogleContactsApiError extends Error {
@@ -95,7 +118,7 @@ export function createGoogleAuthorizationUrl(state: string) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
-  url.searchParams.set("include_granted_scopes", "true");
+  url.searchParams.set("include_granted_scopes", "false");
   url.searchParams.set("scope", GOOGLE_CONTACTS_SCOPES.join(" "));
   url.searchParams.set("state", state);
   return url;
@@ -198,84 +221,79 @@ export async function refreshGoogleAccessToken(refreshToken: string) {
   return token.access_token;
 }
 
-function buildGooglePerson(contact: GoogleContactPayload) {
-  const biography = [
-    contact.duty ? `담당 업무: ${contact.duty}` : null,
-    contact.vendorCategory ? `업체 분야: ${contact.vendorCategory}` : null,
-    "DB-Vendor에서 동기화됨",
-  ].filter(Boolean).join("\n");
-
-  return {
-    names: [{ unstructuredName: contact.name }],
-    phoneNumbers: contact.phone ? [{ value: contact.phone, type: "work" }] : [],
-    emailAddresses: contact.email ? [{ value: contact.email, type: "work" }] : [],
-    organizations: [
-      {
-        name: contact.vendorName,
-        title: contact.title ?? undefined,
-        department: contact.duty ?? undefined,
-        type: "work",
-      },
-    ],
-    biographies: [{ value: biography, contentType: "TEXT_PLAIN" }],
-  };
-}
-
 async function googlePeopleRequest<T>(
   accessToken: string,
   url: string,
-  init?: RequestInit,
 ) {
   const response = await fetch(url, {
-    ...init,
     headers: {
       authorization: `Bearer ${accessToken}`,
-      "content-type": "application/json",
-      ...init?.headers,
     },
     cache: "no-store",
   });
   return parseGoogleResponse<T>(response);
 }
 
-export async function syncGoogleContact(params: {
-  accessToken: string;
-  contact: GoogleContactPayload;
-  resourceName?: string | null;
-}) {
-  const person = buildGooglePerson(params.contact);
+function primaryValue<T extends { metadata?: GoogleFieldMetadata }>(values: T[] | undefined) {
+  return values?.find((value) => value.metadata?.primary) ?? values?.[0];
+}
 
-  if (params.resourceName) {
-    try {
-      const latest = await googlePeopleRequest<GooglePerson>(
-        params.accessToken,
-        `${GOOGLE_PEOPLE_URL}/${params.resourceName}?personFields=metadata`,
-      );
-      const updated = await googlePeopleRequest<GooglePerson>(
-        params.accessToken,
-        `${GOOGLE_PEOPLE_URL}/${params.resourceName}:updateContact?updatePersonFields=names,emailAddresses,phoneNumbers,organizations,biographies&personFields=${CONTACT_FIELDS}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            ...person,
-            resourceName: params.resourceName,
-            etag: latest.etag,
-            metadata: latest.metadata,
-          }),
-        },
-      );
-      if (!updated.resourceName) throw new Error("Google 연락처 식별자를 받지 못했어.");
-      return { resourceName: updated.resourceName, etag: updated.etag ?? null };
-    } catch (error) {
-      if (!(error instanceof GoogleContactsApiError) || error.status !== 404) throw error;
-    }
-  }
+export function normalizeGoogleContact(person: GooglePerson): GoogleContactSummary | null {
+  if (!person.resourceName || person.metadata?.deleted) return null;
+  const name = primaryValue(person.names);
+  const email = primaryValue(person.emailAddresses);
+  const phone = primaryValue(person.phoneNumbers);
+  const organization =
+    person.organizations?.find((value) => value.current && value.metadata?.primary) ??
+    person.organizations?.find((value) => value.current) ??
+    primaryValue(person.organizations);
 
-  const created = await googlePeopleRequest<GooglePerson>(
-    params.accessToken,
-    `${GOOGLE_PEOPLE_URL}/people:createContact?personFields=${CONTACT_FIELDS}`,
-    { method: "POST", body: JSON.stringify(person) },
-  );
-  if (!created.resourceName) throw new Error("Google 연락처 식별자를 받지 못했어.");
-  return { resourceName: created.resourceName, etag: created.etag ?? null };
+  return {
+    resourceName: person.resourceName,
+    etag: person.etag ?? null,
+    name: name?.displayName?.trim() || name?.unstructuredName?.trim() || "",
+    phone: phone?.canonicalForm?.trim() || phone?.value?.trim() || null,
+    email: email?.value?.trim() || null,
+    organization: organization?.name?.trim() || null,
+    title: organization?.title?.trim() || null,
+    department: organization?.department?.trim() || null,
+  };
+}
+
+export async function listGoogleContacts(accessToken: string) {
+  const contacts: GoogleContactSummary[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = new URL(`${GOOGLE_PEOPLE_URL}/people/me/connections`);
+    url.searchParams.set("personFields", CONTACT_FIELDS);
+    url.searchParams.set("pageSize", "1000");
+    url.searchParams.set("sortOrder", "LAST_NAME_ASCENDING");
+    url.searchParams.append("sources", "READ_SOURCE_TYPE_CONTACT");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const page = await googlePeopleRequest<{
+      connections?: GooglePerson[];
+      nextPageToken?: string;
+    }>(accessToken, url.toString());
+    contacts.push(
+      ...(page.connections ?? []).flatMap((person) => {
+        const contact = normalizeGoogleContact(person);
+        return contact ? [contact] : [];
+      }),
+    );
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+
+  return contacts;
+}
+
+export async function getGoogleContact(accessToken: string, resourceName: string) {
+  const url = new URL(`${GOOGLE_PEOPLE_URL}/${resourceName}`);
+  url.searchParams.set("personFields", CONTACT_FIELDS);
+  url.searchParams.append("sources", "READ_SOURCE_TYPE_CONTACT");
+  const person = await googlePeopleRequest<GooglePerson>(accessToken, url.toString());
+  const contact = normalizeGoogleContact(person);
+  if (!contact) throw new Error("Google 연락처를 찾지 못했어.");
+  return contact;
 }
