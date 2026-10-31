@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { Json } from "@/lib/database.types";
 import { getActor } from "@/lib/supabase/actor";
@@ -21,10 +22,13 @@ export type DocumentActionResult = {
   fileSize?: number | null;
 };
 
+const documentDeleteSchema = z.object({ id: z.string().uuid() });
+
 function revalidateOwner(ownerType: string, ownerId: string) {
   if (ownerType === "business_project") revalidatePath(`/business-projects/${ownerId}`);
   if (ownerType === "project") revalidatePath(`/projects/${ownerId}`);
   if (ownerType === "vendor") revalidatePath(`/vendors/${ownerId}`);
+  if (ownerType === "quote") revalidatePath("/quotes");
   if (ownerType === "contract") revalidatePath(`/contracts/${ownerId}`);
   if (ownerType === "meeting") revalidatePath(`/meetings/${ownerId}`);
 }
@@ -109,6 +113,44 @@ export async function getDocumentAccessUrl(documentId: string): Promise<Document
     fileName: document.file_name,
     mimeType: document.mime_type,
     fileSize: document.file_size,
+  };
+}
+
+export async function deleteDocument(input: { id: string }): Promise<DocumentActionResult> {
+  const parsed = documentDeleteSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "삭제할 문서 정보가 올바르지 않아." };
+
+  const actor = await getActor();
+  if (actor.error || !actor.supabase || !actor.userId)
+    return { ok: false, message: actor.error ?? "로그인이 필요해." };
+  if (!(["admin", "staff", "agent"] as string[]).includes(actor.role ?? ""))
+    return { ok: false, message: "문서를 삭제할 권한이 없어." };
+
+  const { data: document, error: documentError } = await actor.supabase
+    .from("documents")
+    .select("id,owner_type,owner_id")
+    .eq("id", parsed.data.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (documentError || !document)
+    return { ok: false, message: "삭제할 문서를 찾을 수 없거나 권한이 없어." };
+
+  const { data: deleted, error } = await actor.supabase
+    .from("documents")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", document.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error || !deleted)
+    return { ok: false, message: "문서를 휴지통으로 옮기지 못했어. 권한을 확인해 줘." };
+
+  revalidateOwner(document.owner_type, document.owner_id);
+  revalidatePath("/settings/trash");
+  return {
+    ok: true,
+    message: "문서를 휴지통으로 옮겼어. 원본은 영구 삭제 전까지 보관돼.",
   };
 }
 

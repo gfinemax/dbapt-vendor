@@ -7,12 +7,14 @@ import {
   FileText,
   Loader2,
   RefreshCw,
+  Trash2,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { deleteDocument } from "@/app/(main)/documents/actions";
 import { DocumentViewerDialog } from "@/components/documents/document-viewer-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +111,7 @@ function AnalysisProgress({
 export function DocumentList({ documents, canAnalyze }: { documents: DocumentListItem[]; canAnalyze: boolean }) {
   const router = useRouter();
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
   const [liveAnalyses, setLiveAnalyses] = useState<Record<string, LiveAnalysis>>({});
 
   async function pollAnalysis(documentId: string) {
@@ -159,6 +162,26 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
     }
   }
 
+  async function remove(document: DocumentListItem) {
+    if (!window.confirm(`'${document.fileName}' 문서를 삭제할까? 삭제한 문서는 관리자 휴지통에서 복원할 수 있어.`))
+      return;
+
+    setDeletingDocumentId(document.id);
+    try {
+      const result = await deleteDocument({ id: document.id });
+      if (result.ok) {
+        toast.success(result.message);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("문서를 삭제하지 못했어. 잠시 후 다시 시도해 줘.");
+    } finally {
+      setDeletingDocumentId(null);
+    }
+  }
+
   if (!documents.length)
     return <div className="p-10 text-center text-muted-foreground"><FileText className="mx-auto mb-2 size-7" />등록된 문서가 없어.</div>;
 
@@ -172,6 +195,8 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
         const analysisError = live?.error ?? document.analysisError;
         const analysisUpdatedAt = live?.updatedAt ?? document.analysisUpdatedAt;
         const isActive = activeDocumentId === document.id;
+        const isDeleting = deletingDocumentId === document.id;
+        const actionPending = activeDocumentId !== null || deletingDocumentId !== null;
         return (
           <div key={document.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
@@ -192,7 +217,8 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               <DocumentViewerDialog documentId={document.id} extraction={extraction} fileName={document.fileName} mimeType={document.mimeType} />
-              {canAnalyze && status !== "applied" ? <Button disabled={activeDocumentId !== null} size="sm" variant="outline" onClick={() => void analyze(document.id)}>{isActive ? <Loader2 className="animate-spin" /> : <RefreshCw />}{document.analysisStatus ? "다시 분석" : "자동 분석"}</Button> : null}
+              {canAnalyze && status !== "applied" ? <Button disabled={actionPending} size="sm" variant="outline" onClick={() => void analyze(document.id)}>{isActive ? <Loader2 className="animate-spin" /> : <RefreshCw />}{document.analysisStatus ? "다시 분석" : "자동 분석"}</Button> : null}
+              {canAnalyze ? <Button aria-label={`${document.fileName} 삭제`} disabled={actionPending} size="sm" variant="destructive" onClick={() => void remove(document)}>{isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}{isDeleting ? "삭제 중" : "삭제"}</Button> : null}
             </div>
           </div>
         );
