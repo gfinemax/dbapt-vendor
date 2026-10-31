@@ -98,6 +98,7 @@ npx supabase test db
 ## 주요 경로
 
 - `/dashboard`: 진행·계약·지급·일정 요약
+- `/business-projects`: 상위 프로젝트와 프로젝트별 용역건
 - `/projects`, `/quotes`: 용역 건과 견적 비교·선정
 - `/vendors`: 용역사, 담당자, 문서와 타임라인
 - `/contracts`: 계약, 지급·정산, 보증과 변경계약

@@ -1,4 +1,5 @@
 import {
+  BriefcaseBusiness,
   Building2,
   CalendarDays,
   ClipboardList,
@@ -11,6 +12,7 @@ import {
 
 export const navigationItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/business-projects", label: "프로젝트", icon: BriefcaseBusiness },
   { href: "/projects", label: "용역 건", icon: ClipboardList },
   { href: "/vendors", label: "용역사", icon: Building2 },
   { href: "/quotes", label: "견적 비교", icon: TableProperties },
