@@ -41,9 +41,19 @@ export const vendorSchema = z.object({
   bank_account: z.string().trim().max(100),
   related_person: z.string().trim().max(100),
   related_person_phone: z.string().trim().max(50),
+  primary_contact_name: z.string().trim().max(50),
+  primary_contact_phone: z.string().trim().max(30),
   status: z.enum(vendorStatuses),
   memo: optionalText,
   internal_note: optionalText,
+}).superRefine((value, context) => {
+  if (!value.primary_contact_name && value.primary_contact_phone) {
+    context.addIssue({
+      code: "custom",
+      message: "담당자 연락처를 입력하려면 담당자 이름을 입력해 주세요.",
+      path: ["primary_contact_name"],
+    });
+  }
 });
 
 export const vendorContactSchema = z.object({

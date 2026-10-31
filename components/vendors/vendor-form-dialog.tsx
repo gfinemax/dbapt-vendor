@@ -36,6 +36,8 @@ const emptyVendor: VendorInput = {
   bank_account: "",
   related_person: "",
   related_person_phone: "",
+  primary_contact_name: "",
+  primary_contact_phone: "",
   status: "후보",
   memo: "",
   internal_note: "",
@@ -137,6 +139,12 @@ export function VendorFormDialog({
               )} />
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem><FormLabel>업체 연락처</FormLabel><FormControl><Input inputMode="tel" placeholder="02-0000-0000" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="primary_contact_name" render={({ field }) => (
+                <FormItem><FormLabel>담당자</FormLabel><FormControl><Input placeholder="주 담당자 이름" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="primary_contact_phone" render={({ field }) => (
+                <FormItem><FormLabel>담당자 연락처</FormLabel><FormControl><Input inputMode="tel" placeholder="010-0000-0000" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="category" render={({ field }) => (
                 <FormItem><FormLabel>분야 *</FormLabel><FormControl><Input placeholder="예: 인테리어" {...field} /></FormControl><FormMessage /></FormItem>

@@ -1977,6 +1977,28 @@ export type Database = {
         };
         Returns: string;
       };
+      save_vendor_with_primary_contact: {
+        Args: {
+          address_value?: string;
+          bank_account_value?: string;
+          bank_name_value?: string;
+          biz_no_value?: string;
+          category_value?: string;
+          ceo_value?: string;
+          homepage_value?: string;
+          internal_note_value?: string;
+          memo_value?: string;
+          name_value?: string;
+          phone_value?: string;
+          primary_contact_name_value?: string;
+          primary_contact_phone_value?: string;
+          related_person_phone_value?: string;
+          related_person_value?: string;
+          status_value?: Database["public"]["Enums"]["vendor_status"];
+          vendor_id_value?: string;
+        };
+        Returns: string;
+      };
       save_vendor_with_sensitive: {
         Args: {
           address_value?: string;

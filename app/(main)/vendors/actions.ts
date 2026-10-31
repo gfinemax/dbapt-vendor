@@ -71,7 +71,7 @@ export async function saveVendor(input: VendorInput): Promise<VendorActionResult
   }
 
   const values = parsed.data;
-  const { data, error } = await actor.supabase.rpc("save_vendor_with_sensitive", {
+  const { data, error } = await actor.supabase.rpc("save_vendor_with_primary_contact", {
     vendor_id_value: values.id ?? undefined,
     name_value: values.name,
     biz_no_value: values.biz_no,
@@ -87,6 +87,8 @@ export async function saveVendor(input: VendorInput): Promise<VendorActionResult
     internal_note_value: values.internal_note,
     related_person_value: values.related_person,
     related_person_phone_value: values.related_person_phone,
+    primary_contact_name_value: values.primary_contact_name,
+    primary_contact_phone_value: values.primary_contact_phone,
   });
   if (error || !data) return { ok: false, message: databaseMessage(error?.message ?? "") };
   revalidatePath("/vendors");

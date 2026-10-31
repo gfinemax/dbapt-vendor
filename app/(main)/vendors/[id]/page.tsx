@@ -142,6 +142,9 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const contactMap = new Map(
     (contactsResult.data ?? []).map((contact) => [contact.id, contact.name]),
   );
+  const primaryContact =
+    (contactsResult.data ?? []).find((contact) => contact.active && contact.is_primary) ??
+    (contactsResult.data ?? []).find((contact) => contact.active);
   const timeline: VendorDetailProps["timeline"] = [
     ...(quotesResult.data ?? []).map((quote) => ({
       id: `quote-${quote.id}`,
@@ -191,6 +194,8 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
     bank_account: financialResult.data?.bank_account ?? "",
     related_person: vendor.related_person ?? "",
     related_person_phone: vendor.related_person_phone ?? "",
+    primary_contact_name: primaryContact?.name ?? "",
+    primary_contact_phone: primaryContact?.phone ?? "",
     status: vendor.status,
     memo: vendor.memo ?? "",
     internal_note: safeView ? undefined : (internalNoteResult.data?.content ?? ""),
