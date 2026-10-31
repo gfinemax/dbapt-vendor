@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   allowedDocumentExtensions,
+  documentKindStorageSegment,
   documentExtension,
   MAX_DOCUMENT_SIZE,
   safeDocumentFileName,
@@ -96,7 +97,7 @@ export function VendorFormDialog({
     file: File,
   ) {
     const supabase = createClient();
-    const path = `vendor/${vendorId}/${kind}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
+    const path = `vendor/${vendorId}/${documentKindStorageSegment(kind)}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from("vendor-files")
       .upload(path, file, {

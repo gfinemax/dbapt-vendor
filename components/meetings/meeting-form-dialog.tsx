@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { safeDocumentFileName } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { meetingSchema, type MeetingInput } from "@/lib/validators/meeting";
 
@@ -22,7 +23,6 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 function nowKstLocal() { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(" ", "T"); }
 function todayKst() { return nowKstLocal().slice(0, 10); }
-function safeFileName(name: string) { return name.normalize("NFKC").replace(/[^0-9A-Za-z가-힣._-]+/g, "_").slice(-180) || "meeting"; }
 
 export function MeetingFormDialog({ projects, users, fixedProjectId }: { projects: ProjectOption[]; users: { id: string; name: string }[]; fixedProjectId?: string }) {
   const router = useRouter();
@@ -41,7 +41,7 @@ export function MeetingFormDialog({ projects, users, fixedProjectId }: { project
       if (file.size > MAX_FILE_SIZE) throw new Error(`${file.name}: 20MB를 초과했어.`);
       const extension = file.name.split(".").pop()?.toLowerCase();
       if (!extension || !["pdf", "png", "jpg", "jpeg", "gif", "webp", "xls", "xlsx", "hwp"].includes(extension)) throw new Error(`${file.name}: 지원하지 않는 파일 형식이야.`);
-      const path = `meeting/${meetingId}/회의자료/${Date.now()}_${crypto.randomUUID()}_${safeFileName(file.name)}`;
+      const path = `meeting/${meetingId}/meeting_material/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
       const { error } = await supabase.storage.from("vendor-files").upload(path, file, { upsert: false, contentType: file.type || undefined });
       if (error) throw new Error(`${file.name} 업로드 실패: ${error.message}`);
       const result = await createMeetingDocument({ meeting_id: meetingId, project_id: projectId, file_path: path, file_name: file.name });

@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { safeDocumentFileName } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { quoteSchema, type QuoteInput } from "@/lib/validators/quote";
 
@@ -21,10 +22,6 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 function todayKst() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
-}
-
-function safeFileName(name: string) {
-  return name.normalize("NFKC").replace(/[^0-9A-Za-z가-힣._-]+/g, "_").slice(-180) || "quote";
 }
 
 export function QuoteFormDialog({ projectId, vendors }: { projectId: string; vendors: { id: string; name: string }[] }) {
@@ -56,7 +53,7 @@ export function QuoteFormDialog({ projectId, vendors }: { projectId: string; ven
       throw new Error("PDF·이미지·엑셀·한글(hwp) 파일만 첨부할 수 있어.");
     }
     const supabase = createClient();
-    const path = `quote/${quoteId}/견적서/${Date.now()}_${crypto.randomUUID()}_${safeFileName(selectedFile.name)}`;
+    const path = `quote/${quoteId}/quote/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(selectedFile.name)}`;
     const { error } = await supabase.storage.from("vendor-files").upload(path, selectedFile, { upsert: false, contentType: selectedFile.type || undefined });
     if (error) throw new Error(`견적서 업로드 실패: ${error.message}`);
     const result = await createQuoteDocument({ quote_id: quoteId, project_id: projectId, file_path: path, file_name: selectedFile.name, mime_type: selectedFile.type, file_size: selectedFile.size });

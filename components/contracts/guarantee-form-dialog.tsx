@@ -13,12 +13,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { safeDocumentFileName } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { guaranteeSchema, type GuaranteeInput } from "@/lib/validators/contract";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 function todayKst() { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date()); }
-function safeFileName(name: string) { return name.normalize("NFKC").replace(/[^0-9A-Za-z가-힣._-]+/g, "_").slice(-180) || "guarantee"; }
 
 export function GuaranteeFormDialog({ contractId, projectId }: { contractId: string; projectId: string }) {
   const router = useRouter();
@@ -32,7 +32,7 @@ export function GuaranteeFormDialog({ contractId, projectId }: { contractId: str
     const extension = selectedFile.name.split(".").pop()?.toLowerCase();
     if (!extension || !["pdf", "png", "jpg", "jpeg", "hwp"].includes(extension)) throw new Error("PDF·이미지·한글(hwp) 파일만 첨부할 수 있어.");
     const supabase = createClient();
-    const path = `contract/${contractId}/보증증권/${guaranteeId}_${Date.now()}_${crypto.randomUUID()}_${safeFileName(selectedFile.name)}`;
+    const path = `contract/${contractId}/guarantee/${guaranteeId}_${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(selectedFile.name)}`;
     const { error } = await supabase.storage.from("vendor-files").upload(path, selectedFile, { upsert: false, contentType: selectedFile.type || undefined });
     if (error) throw new Error(`보증증권 업로드 실패: ${error.message}`);
     const result = await createContractDocument({ contract_id: contractId, project_id: projectId, kind: "보증증권", file_path: path, file_name: selectedFile.name, mime_type: selectedFile.type, file_size: selectedFile.size });

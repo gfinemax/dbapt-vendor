@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { safeDocumentFileName } from "@/lib/documents";
 import { formatWon } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { contractSchema, type ContractInput } from "@/lib/validators/contract";
@@ -66,15 +67,6 @@ type ParentContract = {
 function todayKst() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
 }
-function safeFileName(name: string) {
-  return (
-    name
-      .normalize("NFKC")
-      .replace(/[^0-9A-Za-z가-힣._-]+/g, "_")
-      .slice(-180) || "contract"
-  );
-}
-
 export function ContractFormDialog({
   projects,
   fixedProjectId,
@@ -132,7 +124,7 @@ export function ContractFormDialog({
     if (!extension || !["pdf", "png", "jpg", "jpeg", "hwp"].includes(extension))
       throw new Error("PDF·이미지·한글(hwp) 파일만 첨부할 수 있어.");
     const supabase = createClient();
-    const path = `contract/${contractId}/계약서/${Date.now()}_${crypto.randomUUID()}_${safeFileName(selectedFile.name)}`;
+    const path = `contract/${contractId}/contract/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(selectedFile.name)}`;
     const { error } = await supabase.storage
       .from("vendor-files")
       .upload(path, selectedFile, { upsert: false, contentType: selectedFile.type || undefined });

@@ -28,12 +28,27 @@ export function documentExtension(fileName: string) {
 }
 
 export function safeDocumentFileName(name: string) {
-  return (
-    name
-      .normalize("NFKC")
-      .replace(/[^0-9A-Za-z가-힣._-]+/g, "_")
-      .slice(-180) || "document"
-  );
+  const extension = documentExtension(name).replace(/[^0-9a-z]/g, "");
+  const baseName = extension ? name.slice(0, -(extension.length + 1)) : name;
+  const safeBaseName = baseName
+    .normalize("NFKD")
+    .replace(/[^0-9A-Za-z._-]+/g, "_")
+    .replace(/^[_\.]+|[_\.]+$/g, "")
+    .slice(-150);
+  return `${safeBaseName || "document"}${extension ? `.${extension}` : ""}`;
+}
+
+export function documentKindStorageSegment(kind: string) {
+  const segments: Record<string, string> = {
+    사업자등록증: "business_registration",
+    견적서: "quote",
+    제안서: "proposal",
+    계약서: "contract",
+    보증증권: "guarantee",
+    회의자료: "meeting_material",
+    기타: "other",
+  };
+  return segments[kind] ?? "other";
 }
 
 export function canAnalyzeDocument(fileName: string, mimeType?: string | null) {

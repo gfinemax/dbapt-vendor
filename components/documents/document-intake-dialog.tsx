@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import {
   allowedDocumentExtensions,
+  documentKindStorageSegment,
   documentExtension,
   MAX_DOCUMENT_SIZE,
   safeDocumentFileName,
@@ -204,7 +205,7 @@ export function DocumentIntakeDialog({
         const extension = documentExtension(file.name);
         if (!allowedDocumentExtensions.has(extension)) throw new Error(`${file.name}: 지원하지 않는 파일 형식이야.`);
         if (file.size > MAX_DOCUMENT_SIZE) throw new Error(`${file.name}: 파일은 20MB 이하여야 해.`);
-        const path = `business_project/${businessProjectId}/${kind}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
+        const path = `business_project/${businessProjectId}/${documentKindStorageSegment(kind)}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from("vendor-files").upload(path, file, { upsert: false, contentType: file.type || undefined });
         if (uploadError) throw new Error(`${file.name}: ${uploadError.message}`);
         const registered = await registerDocument({ owner_type: "business_project", owner_id: businessProjectId, kind, file_path: path, file_name: file.name, mime_type: file.type, file_size: file.size, valid_until: "" });

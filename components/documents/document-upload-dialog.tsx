@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   allowedDocumentExtensions,
   canAnalyzeDocument,
+  documentKindStorageSegment,
   documentExtension,
   MAX_DOCUMENT_SIZE,
   safeDocumentFileName,
@@ -71,7 +72,7 @@ export function DocumentUploadDialog({
         if (!allowedDocumentExtensions.has(extension)) throw new Error(`${file.name}: 지원하지 않는 파일 형식이야.`);
         if (file.size > MAX_DOCUMENT_SIZE) throw new Error(`${file.name}: 파일은 20MB 이하여야 해.`);
 
-        const path = `${ownerType}/${ownerId}/${kind}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
+        const path = `${ownerType}/${ownerId}/${documentKindStorageSegment(kind)}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from("vendor-files").upload(path, file, {
           upsert: false,
           cacheControl: "3600",

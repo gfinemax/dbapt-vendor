@@ -8,17 +8,16 @@ import { toast } from "sonner";
 import { createVendorDocument } from "@/app/(main)/vendors/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  documentKindStorageSegment,
+  safeDocumentFileName,
+} from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const allowedExtensions = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp", "xls", "xlsx", "hwp"]);
 const kinds = ["사업자등록증", "견적서", "제안서", "계약서", "보증증권", "회의자료", "기타"] as const;
-
-function safeFileName(name: string) {
-  const normalized = name.normalize("NFKC").replace(/[^0-9A-Za-z가-힣._-]+/g, "_");
-  return normalized.slice(-180) || "document";
-}
 
 export function FileUploader({ vendorId }: { vendorId: string }) {
   const router = useRouter();
@@ -42,7 +41,7 @@ export function FileUploader({ vendorId }: { vendorId: string }) {
 
     setUploading(true);
     const supabase = createClient();
-    const path = `vendor/${vendorId}/${kind}/${Date.now()}_${crypto.randomUUID()}_${safeFileName(file.name)}`;
+    const path = `vendor/${vendorId}/${documentKindStorageSegment(kind)}/${Date.now()}_${crypto.randomUUID()}_${safeDocumentFileName(file.name)}`;
     const { error } = await supabase.storage.from("vendor-files").upload(path, file, {
       cacheControl: "3600",
       contentType: file.type || undefined,
