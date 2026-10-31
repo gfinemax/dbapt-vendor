@@ -55,14 +55,19 @@ export class GoogleContactsApiError extends Error {
 
 function readEncryptionKey(value: string | undefined) {
   if (!value) return null;
-  const key = Buffer.from(value, "base64");
+  const key = Buffer.from(value.trim(), "base64");
   return key.length === 32 ? key : null;
 }
 
+function readRequiredEnv(value: string | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
 export function getGoogleContactsConfig(): GoogleContactsConfig | null {
-  const clientId = process.env.GOOGLE_CONTACTS_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CONTACTS_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_CONTACTS_REDIRECT_URI;
+  const clientId = readRequiredEnv(process.env.GOOGLE_CONTACTS_CLIENT_ID);
+  const clientSecret = readRequiredEnv(process.env.GOOGLE_CONTACTS_CLIENT_SECRET);
+  const redirectUri = readRequiredEnv(process.env.GOOGLE_CONTACTS_REDIRECT_URI);
   const encryptionKey = readEncryptionKey(process.env.GOOGLE_CONTACTS_TOKEN_ENCRYPTION_KEY);
 
   if (!clientId || !clientSecret || !redirectUri || !encryptionKey) return null;
@@ -71,9 +76,9 @@ export function getGoogleContactsConfig(): GoogleContactsConfig | null {
 
 export function getGoogleContactsMissingConfig() {
   const missing: string[] = [];
-  if (!process.env.GOOGLE_CONTACTS_CLIENT_ID) missing.push("GOOGLE_CONTACTS_CLIENT_ID");
-  if (!process.env.GOOGLE_CONTACTS_CLIENT_SECRET) missing.push("GOOGLE_CONTACTS_CLIENT_SECRET");
-  if (!process.env.GOOGLE_CONTACTS_REDIRECT_URI) missing.push("GOOGLE_CONTACTS_REDIRECT_URI");
+  if (!readRequiredEnv(process.env.GOOGLE_CONTACTS_CLIENT_ID)) missing.push("GOOGLE_CONTACTS_CLIENT_ID");
+  if (!readRequiredEnv(process.env.GOOGLE_CONTACTS_CLIENT_SECRET)) missing.push("GOOGLE_CONTACTS_CLIENT_SECRET");
+  if (!readRequiredEnv(process.env.GOOGLE_CONTACTS_REDIRECT_URI)) missing.push("GOOGLE_CONTACTS_REDIRECT_URI");
   if (!readEncryptionKey(process.env.GOOGLE_CONTACTS_TOKEN_ENCRYPTION_KEY)) {
     missing.push("GOOGLE_CONTACTS_TOKEN_ENCRYPTION_KEY");
   }
