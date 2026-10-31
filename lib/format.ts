@@ -48,6 +48,26 @@ export function formatDate(value: Date | string | number) {
   return `${year}.${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}.`;
 }
 
+export function formatDateTime(value: Date | string | number) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new RangeError("유효한 일시를 입력해 주세요.");
+  }
+
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: KST_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}.${values.month}.${values.day}. ${values.hour}:${values.minute}`;
+}
+
 export function formatWon(value: bigint | number) {
   if (typeof value === "number" && !Number.isSafeInteger(value)) {
     throw new RangeError("금액은 안전한 정수 범위로 입력해 주세요.");
