@@ -132,7 +132,7 @@ export function VendorDetail({ vendor, canManage, canImportGoogleContacts, googl
 
         <TabsContent value="documents" className="space-y-4">
           {canManage ? <FileUploader vendorId={vendor.id} /> : null}
-          <Card className="py-0"><DocumentList canAnalyze={canManage} documents={documents} /></Card>
+          <Card className="py-0"><DocumentList canAnalyze={canManage} documents={documents} vendorProfile={{ id: vendor.id, name: vendor.name, bizNo: vendor.biz_no, ceo: vendor.ceo, address: vendor.address }} /></Card>
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">

@@ -23,6 +23,7 @@ export type DocumentActionResult = {
 };
 
 const documentDeleteSchema = z.object({ id: z.string().uuid() });
+const documentApplyVendorSchema = z.object({ document_id: z.string().uuid() });
 
 function revalidateOwner(ownerType: string, ownerId: string) {
   if (ownerType === "business_project") revalidatePath(`/business-projects/${ownerId}`);
@@ -151,6 +152,43 @@ export async function deleteDocument(input: { id: string }): Promise<DocumentAct
   return {
     ok: true,
     message: "문서를 휴지통으로 옮겼어. 원본은 영구 삭제 전까지 보관돼.",
+  };
+}
+
+export async function applyVendorProfileFromDocument(input: {
+  document_id: string;
+}): Promise<DocumentActionResult> {
+  const parsed = documentApplyVendorSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "반영할 문서 정보가 올바르지 않아." };
+
+  const actor = await getActor();
+  if (actor.error || !actor.supabase || !actor.userId)
+    return { ok: false, message: actor.error ?? "로그인이 필요해." };
+  if (actor.role !== "admin" && actor.role !== "staff")
+    return { ok: false, message: "업체 기본정보를 반영할 권한이 없어." };
+
+  const { data, error } = await actor.supabase.rpc(
+    "apply_vendor_profile_from_document",
+    { document_id_value: parsed.data.document_id },
+  );
+  if (error || !data) {
+    if (error?.message.includes("vendors_active_biz_no_uidx"))
+      return { ok: false, message: "추출된 사업자번호가 다른 업체에 이미 등록돼 있어." };
+    return {
+      ok: false,
+      message: error?.message.includes("추출된") || error?.message.includes("반영할")
+        ? error.message.replace("습니다.", "어.").replace("주세요.", "줘.")
+        : "분석 결과를 업체 기본정보에 반영하지 못했어. 권한과 추출값을 확인해 줘.",
+    };
+  }
+
+  revalidatePath("/vendors");
+  revalidatePath(`/vendors/${data}`);
+  return {
+    ok: true,
+    id: data,
+    message: "검토한 분석 결과를 업체 기본정보에 반영했어.",
   };
 }
 

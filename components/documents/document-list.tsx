@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Building2,
   Check,
   Circle,
   FileText,
@@ -14,7 +15,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { deleteDocument } from "@/app/(main)/documents/actions";
+import {
+  applyVendorProfileFromDocument,
+  deleteDocument,
+} from "@/app/(main)/documents/actions";
 import { DocumentViewerDialog } from "@/components/documents/document-viewer-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,14 @@ export type DocumentListItem = {
   analysisError: string | null;
   analysisUpdatedAt?: string | null;
   extractedData: unknown;
+};
+
+export type VendorProfileSnapshot = {
+  id: string;
+  name: string;
+  bizNo: string;
+  ceo: string;
+  address: string;
 };
 
 type LiveAnalysis = {
@@ -108,10 +120,19 @@ function AnalysisProgress({
   );
 }
 
-export function DocumentList({ documents, canAnalyze }: { documents: DocumentListItem[]; canAnalyze: boolean }) {
+export function DocumentList({
+  documents,
+  canAnalyze,
+  vendorProfile,
+}: {
+  documents: DocumentListItem[];
+  canAnalyze: boolean;
+  vendorProfile?: VendorProfileSnapshot;
+}) {
   const router = useRouter();
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+  const [applyingDocumentId, setApplyingDocumentId] = useState<string | null>(null);
   const [liveAnalyses, setLiveAnalyses] = useState<Record<string, LiveAnalysis>>({});
 
   async function pollAnalysis(documentId: string) {
@@ -182,6 +203,30 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
     }
   }
 
+  async function applyVendorProfile(document: DocumentListItem, changes: string[]) {
+    if (!vendorProfile) return;
+    const confirmed = window.confirm(
+      `'${document.fileName}' 분석 결과를 업체 기본정보에 반영할까?\n\n${changes.join("\n")}\n\n기존 값과 변경 이력은 감사 로그에 남아.`,
+    );
+    if (!confirmed) return;
+
+    setApplyingDocumentId(document.id);
+    try {
+      const result = await applyVendorProfileFromDocument({ document_id: document.id });
+      if (result.ok) {
+        toast.success(result.message);
+        router.push(`/vendors/${vendorProfile.id}?tab=basic`);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("업체 기본정보를 반영하지 못했어. 잠시 후 다시 시도해 줘.");
+    } finally {
+      setApplyingDocumentId(null);
+    }
+  }
+
   if (!documents.length)
     return <div className="p-10 text-center text-muted-foreground"><FileText className="mx-auto mb-2 size-7" />등록된 문서가 없어.</div>;
 
@@ -196,7 +241,24 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
         const analysisUpdatedAt = live?.updatedAt ?? document.analysisUpdatedAt;
         const isActive = activeDocumentId === document.id;
         const isDeleting = deletingDocumentId === document.id;
-        const actionPending = activeDocumentId !== null || deletingDocumentId !== null;
+        const isApplying = applyingDocumentId === document.id;
+        const actionPending = activeDocumentId !== null || deletingDocumentId !== null || applyingDocumentId !== null;
+        const vendorChanges = vendorProfile && extraction
+          ? [
+              extraction.vendor.name && extraction.vendor.name !== vendorProfile.name
+                ? `상호: ${vendorProfile.name || "미등록"} → ${extraction.vendor.name}`
+                : null,
+              extraction.vendor.business_number && extraction.vendor.business_number !== vendorProfile.bizNo
+                ? `사업자번호: ${vendorProfile.bizNo || "미등록"} → ${extraction.vendor.business_number}`
+                : null,
+              extraction.vendor.representative && extraction.vendor.representative !== vendorProfile.ceo
+                ? `대표자: ${vendorProfile.ceo || "미등록"} → ${extraction.vendor.representative}`
+                : null,
+              extraction.vendor.address && extraction.vendor.address !== vendorProfile.address
+                ? `주소: ${vendorProfile.address || "미등록"} → ${extraction.vendor.address}`
+                : null,
+            ].filter((change): change is string => change !== null)
+          : [];
         return (
           <div key={document.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
@@ -217,6 +279,7 @@ export function DocumentList({ documents, canAnalyze }: { documents: DocumentLis
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               <DocumentViewerDialog documentId={document.id} extraction={extraction} fileName={document.fileName} mimeType={document.mimeType} />
+              {canAnalyze && status === "review_required" && vendorChanges.length ? <Button disabled={actionPending} size="sm" variant="outline" onClick={() => void applyVendorProfile(document, vendorChanges)}>{isApplying ? <Loader2 className="animate-spin" /> : <Building2 />}{isApplying ? "반영 중" : "업체정보 반영"}</Button> : null}
               {canAnalyze && status !== "applied" ? <Button disabled={actionPending} size="sm" variant="outline" onClick={() => void analyze(document.id)}>{isActive ? <Loader2 className="animate-spin" /> : <RefreshCw />}{document.analysisStatus ? "다시 분석" : "자동 분석"}</Button> : null}
               {canAnalyze ? <Button aria-label={`${document.fileName} 삭제`} disabled={actionPending} size="sm" variant="destructive" onClick={() => void remove(document)}>{isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}{isDeleting ? "삭제 중" : "삭제"}</Button> : null}
             </div>

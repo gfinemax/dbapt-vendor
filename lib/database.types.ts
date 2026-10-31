@@ -2139,6 +2139,10 @@ export type Database = {
       };
     };
     Functions: {
+      apply_vendor_profile_from_document: {
+        Args: { document_id_value: string };
+        Returns: string;
+      };
       create_contract_with_payments: {
         Args: {
           amount_value: number;
