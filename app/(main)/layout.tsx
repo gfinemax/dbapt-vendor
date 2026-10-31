@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
-import { AppSidebar, SidebarBrand } from "@/components/layout/app-sidebar";
-import { TopBar } from "@/components/layout/top-bar";
+import { MainShell } from "@/components/layout/main-shell";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -16,17 +16,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   }
 
   const email = typeof claims.email === "string" ? claims.email : "사용자";
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get("db_vendor_sidebar_collapsed_v1")?.value === "1";
 
   return (
-    <div className="min-h-svh bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-background print:hidden md:block">
-        <SidebarBrand />
-        <AppSidebar />
-      </aside>
-      <div className="print:pl-0 md:pl-64">
-        <TopBar email={email} />
-        <main className="p-4 print:p-0 md:p-6 lg:p-8">{children}</main>
-      </div>
-    </div>
+    <MainShell email={email} initialCollapsed={initialCollapsed}>
+      {children}
+    </MainShell>
   );
 }

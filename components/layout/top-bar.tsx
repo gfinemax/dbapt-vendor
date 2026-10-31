@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, UserRound } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 
 import { signOut } from "@/app/(main)/actions";
 import { AppSidebar, SidebarBrand } from "@/components/layout/app-sidebar";
@@ -15,7 +15,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-export function TopBar({ email }: { email: string }) {
+export function TopBar({
+  collapsed,
+  email,
+  onSidebarToggle,
+}: {
+  collapsed: boolean;
+  email: string;
+  onSidebarToggle: () => void;
+}) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur print:hidden md:px-6">
       <div className="flex items-center gap-3">
@@ -31,6 +39,16 @@ export function TopBar({ email }: { email: string }) {
             <AppSidebar mobile />
           </SheetContent>
         </Sheet>
+        <Button
+          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          className="hidden md:inline-flex"
+          size="icon"
+          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          variant="ghost"
+          onClick={onSidebarToggle}
+        >
+          {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+        </Button>
         <div>
           <p className="text-sm font-semibold">대방동지역주택조합</p>
           <p className="hidden text-xs text-muted-foreground sm:block">용역 업무를 한곳에서 관리해</p>
