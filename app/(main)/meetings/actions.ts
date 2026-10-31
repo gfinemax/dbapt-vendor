@@ -24,7 +24,9 @@ export async function createMeeting(input: MeetingInput): Promise<MeetingActionR
   const heldAt = new Date(`${value.held_at}:00+09:00`).toISOString();
   const { data, error } = await actor.supabase.rpc("create_meeting_with_actions", {
     project_id_value: value.project_id,
-    vendor_id_value: value.vendor_id || null,
+    // Postgres accepts a nullable uuid here; generated RPC args do not retain
+    // function-argument nullability.
+    vendor_id_value: (value.vendor_id || null) as unknown as string,
     held_at_value: heldAt,
     method_value: value.method,
     attendees_union_value: value.attendees_union,

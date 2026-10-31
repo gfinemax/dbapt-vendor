@@ -1,9 +1,6 @@
 import { notFound } from "next/navigation";
 
-import {
-  ProjectDetail,
-  type ProjectDetailProps,
-} from "@/components/projects/project-detail";
+import { ProjectDetail, type ProjectDetailProps } from "@/components/projects/project-detail";
 import { parseQuoteItems } from "@/lib/quotes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,12 +19,7 @@ export default async function ProjectDetailPage({
   const safeView = role === "agent" || role === "viewer";
   const projectQuery = safeView
     ? supabase.from("projects_public").select("*").eq("id", id).maybeSingle()
-    : supabase
-        .from("projects")
-        .select("*")
-        .eq("id", id)
-        .is("deleted_at", null)
-        .maybeSingle();
+    : supabase.from("projects").select("*").eq("id", id).is("deleted_at", null).maybeSingle();
   const { data: project, error } = await projectQuery;
   if (
     error ||
@@ -48,6 +40,7 @@ export default async function ProjectDetailPage({
     documentsResult,
     usersResult,
     businessProjectResult,
+    internalNoteResult,
   ] = await Promise.all([
     supabase
       .from("project_vendors")
@@ -64,6 +57,7 @@ export default async function ProjectDetailPage({
       .from("contracts")
       .select("id,vendor_id,title,signed_at,amount,vat")
       .eq("project_id", id)
+      .is("parent_contract_id", null)
       .is("deleted_at", null)
       .order("signed_at", { ascending: false }),
     supabase
@@ -92,6 +86,14 @@ export default async function ProjectDetailPage({
       .eq("id", project.business_project_id)
       .is("deleted_at", null)
       .maybeSingle(),
+    supabase
+      .from("project_internal_notes")
+      .select("content")
+      .eq("project_id", id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   const vendorIds = [
     ...new Set([
@@ -107,21 +109,11 @@ export default async function ProjectDetailPage({
     ? supabase
         .from("vendors_public")
         .select("id,name")
-        .in(
-          "id",
-          vendorIds.length
-            ? vendorIds
-            : ["00000000-0000-0000-0000-000000000000"],
-        )
+        .in("id", vendorIds.length ? vendorIds : ["00000000-0000-0000-0000-000000000000"])
     : supabase
         .from("vendors")
         .select("id,name")
-        .in(
-          "id",
-          vendorIds.length
-            ? vendorIds
-            : ["00000000-0000-0000-0000-000000000000"],
-        )
+        .in("id", vendorIds.length ? vendorIds : ["00000000-0000-0000-0000-000000000000"])
         .is("deleted_at", null);
   const { data: vendorRows } = await vendorQuery;
   const vendorMap = new Map(
@@ -129,15 +121,8 @@ export default async function ProjectDetailPage({
       vendor.id && vendor.name ? [[vendor.id, vendor.name]] : [],
     ),
   );
-  const ownerMap = new Map(
-    (usersResult.data ?? []).map((user) => [user.id, user.name]),
-  );
-  const internalNote = safeView
-    ? undefined
-    : typeof (project as unknown as { internal_note?: unknown })
-          .internal_note === "string"
-      ? (project as unknown as { internal_note: string }).internal_note
-      : "";
+  const ownerMap = new Map((usersResult.data ?? []).map((user) => [user.id, user.name]));
+  const internalNote = safeView ? undefined : (internalNoteResult.data?.content ?? "");
 
   const props: ProjectDetailProps = {
     project: {
@@ -149,9 +134,7 @@ export default async function ProjectDetailPage({
       stage: project.stage,
       businessProjectId: project.business_project_id,
       businessProjectTitle: businessProjectResult.data?.title ?? "프로젝트",
-      ownerName: project.owner_user_id
-        ? (ownerMap.get(project.owner_user_id) ?? null)
-        : null,
+      ownerName: project.owner_user_id ? (ownerMap.get(project.owner_user_id) ?? null) : null,
       boardResolution: project.board_resolution,
       selectedVendorId: project.selected_vendor_id,
       selectedVendorName: project.selected_vendor_id
@@ -199,9 +182,7 @@ export default async function ProjectDetailPage({
       heldAt: meeting.held_at,
       method: meeting.method,
       agenda: meeting.agenda,
-      vendorName: meeting.vendor_id
-        ? (vendorMap.get(meeting.vendor_id) ?? null)
-        : null,
+      vendorName: meeting.vendor_id ? (vendorMap.get(meeting.vendor_id) ?? null) : null,
     })),
     events: eventsResult.data ?? [],
     documents: (documentsResult.data ?? []).map((document) => ({
@@ -212,11 +193,11 @@ export default async function ProjectDetailPage({
       createdAt: document.created_at,
     })),
     canCreateQuote: role === "admin" || role === "staff" || role === "agent",
-    canManageContracts:
-      role === "admin" || role === "staff" || role === "agent",
+    canManageContracts: role === "admin" || role === "staff" || role === "agent",
+    contractDraftOnly: role === "agent",
     canManageMeetings: role === "admin" || role === "staff" || role === "agent",
     meetingUsers: usersResult.data ?? [],
-    canSelect: role === "admin" || role === "executive",
+    canSelect: role === "admin" || role === "staff",
     defaultTab: query.tab ?? "overview",
   };
   return <ProjectDetail {...props} />;

@@ -20,10 +20,7 @@ import { formatDate, formatDateTime, formatWon } from "@/lib/format";
 import type { QuoteComparisonRow } from "@/lib/quotes";
 
 const QuoteFormDialog = dynamic(
-  () =>
-    import("@/components/projects/quote-form-dialog").then(
-      (module) => module.QuoteFormDialog,
-    ),
+  () => import("@/components/projects/quote-form-dialog").then((module) => module.QuoteFormDialog),
   { ssr: false },
 );
 const ContractFormDialog = dynamic(
@@ -35,9 +32,7 @@ const ContractFormDialog = dynamic(
 );
 const MeetingFormDialog = dynamic(
   () =>
-    import("@/components/meetings/meeting-form-dialog").then(
-      (module) => module.MeetingFormDialog,
-    ),
+    import("@/components/meetings/meeting-form-dialog").then((module) => module.MeetingFormDialog),
   { ssr: false },
 );
 
@@ -94,6 +89,7 @@ export type ProjectDetailProps = {
   }[];
   canCreateQuote: boolean;
   canManageContracts: boolean;
+  contractDraftOnly: boolean;
   canManageMeetings: boolean;
   meetingUsers: { id: string; name: string }[];
   canSelect: boolean;
@@ -110,6 +106,7 @@ export function ProjectDetail({
   documents,
   canCreateQuote,
   canManageContracts,
+  contractDraftOnly,
   canManageMeetings,
   meetingUsers,
   canSelect,
@@ -127,9 +124,7 @@ export function ProjectDetail({
             ← {project.businessProjectTitle}
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {project.title}
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">{project.title}</h1>
             <ProjectStageBadge stage={project.stage} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -137,19 +132,14 @@ export function ProjectDetail({
           </p>
         </div>
         {canCreateQuote ? (
-          <QuoteFormDialog
-            projectId={project.id}
-            vendors={participantOptions}
-          />
+          <QuoteFormDialog projectId={project.id} vendors={participantOptions} />
         ) : null}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card size="sm">
           <CardContent>
             <p className="text-xs text-muted-foreground">예산</p>
-            <p className="mt-1 text-xl font-bold">
-              {formatWon(project.budget)}
-            </p>
+            <p className="mt-1 text-xl font-bold">{formatWon(project.budget)}</p>
           </CardContent>
         </Card>
         <Card size="sm">
@@ -175,14 +165,9 @@ export function ProjectDetail({
       </div>
       <Tabs
         defaultValue={
-          [
-            "overview",
-            "quotes",
-            "contracts",
-            "meetings",
-            "schedule",
-            "documents",
-          ].includes(defaultTab)
+          ["overview", "quotes", "contracts", "meetings", "schedule", "documents"].includes(
+            defaultTab,
+          )
             ? defaultTab
             : "overview"
         }
@@ -226,9 +211,7 @@ export function ProjectDetail({
                 {project.internalNote !== undefined ? (
                   <div className="rounded-lg bg-amber-50 p-3 text-amber-900">
                     <p className="text-xs font-semibold">내부 검토의견</p>
-                    <p className="mt-1">
-                      {project.internalNote || "등록된 내용이 없어."}
-                    </p>
+                    <p className="mt-1">{project.internalNote || "등록된 내용이 없어."}</p>
                   </div>
                 ) : null}
               </CardContent>
@@ -240,9 +223,7 @@ export function ProjectDetail({
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-xs text-muted-foreground">선정 업체</p>
-                  <p className="mt-1 font-semibold">
-                    {project.selectedVendorName ?? "미선정"}
-                  </p>
+                  <p className="mt-1 font-semibold">{project.selectedVendorName ?? "미선정"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">선정 사유</p>
@@ -270,6 +251,7 @@ export function ProjectDetail({
             {canManageContracts ? (
               <div className="flex justify-end">
                 <ContractFormDialog
+                  draftOnly={contractDraftOnly}
                   fixedProjectId={project.id}
                   projects={[
                     {
@@ -294,13 +276,10 @@ export function ProjectDetail({
                       <div>
                         <p className="font-semibold">{contract.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {contract.vendorName} ·{" "}
-                          {formatDate(contract.signedAt)}
+                          {contract.vendorName} · {formatDate(contract.signedAt)}
                         </p>
                       </div>
-                      <p className="font-bold">
-                        {formatWon(contract.amount + contract.vat)}
-                      </p>
+                      <p className="font-bold">{formatWon(contract.amount + contract.vat)}</p>
                     </Link>
                   ))
                 ) : (
@@ -368,21 +347,14 @@ export function ProjectDetail({
             <div className="divide-y">
               {events.length ? (
                 events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between gap-3 p-4"
-                  >
+                  <div key={event.id} className="flex items-center justify-between gap-3 p-4">
                     <div>
                       <p className="font-semibold">{event.title}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {event.type} · {formatDate(event.date)}
                       </p>
                     </div>
-                    <Badge
-                      variant={
-                        event.status === "지연" ? "destructive" : "secondary"
-                      }
-                    >
+                    <Badge variant={event.status === "지연" ? "destructive" : "secondary"}>
                       {event.status}
                     </Badge>
                   </div>
@@ -401,15 +373,11 @@ export function ProjectDetail({
             <div className="divide-y">
               {documents.length ? (
                 documents.map((document) => (
-                  <div
-                    key={document.id}
-                    className="flex items-center justify-between gap-3 p-4"
-                  >
+                  <div key={document.id} className="flex items-center justify-between gap-3 p-4">
                     <div>
                       <p className="font-semibold">{document.fileName}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {document.kind} · v{document.version} ·{" "}
-                        {formatDate(document.createdAt)}
+                        {document.kind} · v{document.version} · {formatDate(document.createdAt)}
                       </p>
                     </div>
                     <FileText className="size-5 text-muted-foreground" />

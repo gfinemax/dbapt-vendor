@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   public: {
@@ -67,6 +61,100 @@ export type Database = {
             columns: ["meeting_id"];
             isOneToOne: false;
             referencedRelation: "meetings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      approval_requests: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          decided_at: string | null;
+          decided_by: string | null;
+          decision_reason: string | null;
+          deleted_at: string | null;
+          id: string;
+          project_id: string;
+          requested_at: string;
+          requested_by: string;
+          snapshot: NonNullable<Json>;
+          status: Database["public"]["Enums"]["approval_status"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["approval_target_type"];
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_reason?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          project_id: string;
+          requested_at?: string;
+          requested_by: string;
+          snapshot?: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["approval_status"];
+          target_id: string;
+          target_type: Database["public"]["Enums"]["approval_target_type"];
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_reason?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          project_id?: string;
+          requested_at?: string;
+          requested_by?: string;
+          snapshot?: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["approval_status"];
+          target_id?: string;
+          target_type?: Database["public"]["Enums"]["approval_target_type"];
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_decided_by_fkey";
+            columns: ["decided_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects_public";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "approval_requests_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -246,9 +334,117 @@ export type Database = {
           },
         ];
       };
+      contract_amendments: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["approval_status"];
+          approved_at: string | null;
+          approved_by: string | null;
+          change_reason: string;
+          contract_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          end_at: string;
+          final_amount: number;
+          final_vat: number;
+          id: string;
+          is_sealed: boolean;
+          legacy_contract_id: string | null;
+          original_location: string | null;
+          previous_amount: number;
+          previous_vat: number;
+          sequence: number;
+          signed_at: string;
+          start_at: string;
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          approval_status?: Database["public"]["Enums"]["approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
+          change_reason: string;
+          contract_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          end_at: string;
+          final_amount: number;
+          final_vat: number;
+          id?: string;
+          is_sealed?: boolean;
+          legacy_contract_id?: string | null;
+          original_location?: string | null;
+          previous_amount: number;
+          previous_vat: number;
+          sequence: number;
+          signed_at: string;
+          start_at: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          approval_status?: Database["public"]["Enums"]["approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
+          change_reason?: string;
+          contract_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          end_at?: string;
+          final_amount?: number;
+          final_vat?: number;
+          id?: string;
+          is_sealed?: boolean;
+          legacy_contract_id?: string | null;
+          original_location?: string | null;
+          previous_amount?: number;
+          previous_vat?: number;
+          sequence?: number;
+          signed_at?: string;
+          start_at?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contract_amendments_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_amendments_contract_id_fkey";
+            columns: ["contract_id"];
+            isOneToOne: false;
+            referencedRelation: "contracts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_amendments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contract_amendments_legacy_contract_id_fkey";
+            columns: ["legacy_contract_id"];
+            isOneToOne: true;
+            referencedRelation: "contracts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       contracts: {
         Row: {
           amount: number;
+          approval_status: Database["public"]["Enums"]["approval_status"];
+          approved_at: string | null;
+          approved_by: string | null;
           change_reason: string | null;
           contract_party: string;
           created_at: string;
@@ -270,6 +466,9 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           amount: number;
+          approval_status?: Database["public"]["Enums"]["approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
           change_reason?: string | null;
           contract_party: string;
           created_at?: string;
@@ -290,6 +489,9 @@ export type Database = {
         };
         Update: {
           amount?: number;
+          approval_status?: Database["public"]["Enums"]["approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
           change_reason?: string | null;
           contract_party?: string;
           created_at?: string;
@@ -309,6 +511,13 @@ export type Database = {
           vendor_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "contracts_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "contracts_created_by_fkey";
             columns: ["created_by"];
@@ -400,6 +609,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      erp_sync_outbox: {
+        Row: {
+          aggregate_id: string;
+          aggregate_type: string;
+          attempts: number;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          event_type: string;
+          id: string;
+          last_error: string | null;
+          payload: NonNullable<Json>;
+          status: Database["public"]["Enums"]["erp_sync_status"];
+          synced_at: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          aggregate_id: string;
+          aggregate_type: string;
+          attempts?: number;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          event_type: string;
+          id?: string;
+          last_error?: string | null;
+          payload: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["erp_sync_status"];
+          synced_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          aggregate_id?: string;
+          aggregate_type?: string;
+          attempts?: number;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          event_type?: string;
+          id?: string;
+          last_error?: string | null;
+          payload?: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["erp_sync_status"];
+          synced_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "erp_sync_outbox_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -810,6 +1076,59 @@ export type Database = {
           },
         ];
       };
+      project_internal_notes: {
+        Row: {
+          content: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          project_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          content: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          project_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          project_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_internal_notes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_internal_notes_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_internal_notes_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects_public";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       project_vendors: {
         Row: {
           created_at: string;
@@ -894,7 +1213,6 @@ export type Database = {
           deleted_at: string | null;
           description: string | null;
           id: string;
-          internal_note: string | null;
           owner_user_id: string | null;
           selected_vendor_id: string | null;
           selection_reason: string | null;
@@ -913,7 +1231,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           id?: string;
-          internal_note?: string | null;
           owner_user_id?: string | null;
           selected_vendor_id?: string | null;
           selection_reason?: string | null;
@@ -931,7 +1248,6 @@ export type Database = {
           deleted_at?: string | null;
           description?: string | null;
           id?: string;
-          internal_note?: string | null;
           owner_user_id?: string | null;
           selected_vendor_id?: string | null;
           selection_reason?: string | null;
@@ -1190,6 +1506,115 @@ export type Database = {
           },
         ];
       };
+      vendor_financial_details: {
+        Row: {
+          bank_account: string | null;
+          bank_name: string | null;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          updated_at: string;
+          vendor_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          bank_account?: string | null;
+          bank_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          updated_at?: string;
+          vendor_id: string;
+        };
+        Update: {
+          bank_account?: string | null;
+          bank_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          updated_at?: string;
+          vendor_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vendor_financial_details_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vendor_financial_details_vendor_id_fkey";
+            columns: ["vendor_id"];
+            isOneToOne: false;
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vendor_financial_details_vendor_id_fkey";
+            columns: ["vendor_id"];
+            isOneToOne: false;
+            referencedRelation: "vendors_public";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      vendor_internal_notes: {
+        Row: {
+          content: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          updated_at: string;
+          vendor_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          content: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          updated_at?: string;
+          vendor_id: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          updated_at?: string;
+          vendor_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vendor_internal_notes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vendor_internal_notes_vendor_id_fkey";
+            columns: ["vendor_id"];
+            isOneToOne: false;
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "vendor_internal_notes_vendor_id_fkey";
+            columns: ["vendor_id"];
+            isOneToOne: false;
+            referencedRelation: "vendors_public";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       vendor_reviews: {
         Row: {
           comment: string | null;
@@ -1272,8 +1697,6 @@ export type Database = {
       vendors: {
         Row: {
           address: string | null;
-          bank_account: string | null;
-          bank_name: string | null;
           biz_no: string | null;
           category: string | null;
           ceo: string | null;
@@ -1282,7 +1705,6 @@ export type Database = {
           deleted_at: string | null;
           homepage: string | null;
           id: string;
-          internal_note: string | null;
           memo: string | null;
           name: string;
           status: Database["public"]["Enums"]["vendor_status"];
@@ -1291,8 +1713,6 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           address?: string | null;
-          bank_account?: string | null;
-          bank_name?: string | null;
           biz_no?: string | null;
           category?: string | null;
           ceo?: string | null;
@@ -1301,7 +1721,6 @@ export type Database = {
           deleted_at?: string | null;
           homepage?: string | null;
           id?: string;
-          internal_note?: string | null;
           memo?: string | null;
           name: string;
           status?: Database["public"]["Enums"]["vendor_status"];
@@ -1309,8 +1728,6 @@ export type Database = {
         };
         Update: {
           address?: string | null;
-          bank_account?: string | null;
-          bank_name?: string | null;
           biz_no?: string | null;
           category?: string | null;
           ceo?: string | null;
@@ -1319,7 +1736,6 @@ export type Database = {
           deleted_at?: string | null;
           homepage?: string | null;
           id?: string;
-          internal_note?: string | null;
           memo?: string | null;
           name?: string;
           status?: Database["public"]["Enums"]["vendor_status"];
@@ -1431,8 +1847,6 @@ export type Database = {
       vendors_public: {
         Row: {
           address: string | null;
-          bank_account: string | null;
-          bank_name: string | null;
           biz_no: string | null;
           category: string | null;
           ceo: string | null;
@@ -1449,8 +1863,6 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           address?: string | null;
-          bank_account?: string | null;
-          bank_name?: string | null;
           biz_no?: string | null;
           category?: string | null;
           ceo?: string | null;
@@ -1466,8 +1878,6 @@ export type Database = {
         };
         Update: {
           address?: string | null;
-          bank_account?: string | null;
-          bank_name?: string | null;
           biz_no?: string | null;
           category?: string | null;
           ceo?: string | null;
@@ -1496,12 +1906,12 @@ export type Database = {
       create_contract_with_payments: {
         Args: {
           amount_value: number;
-          change_reason_value?: string | null;
+          change_reason_value?: string;
           contract_party_value: string;
           end_at_value: string;
           is_sealed_value: boolean;
           original_location_value: string;
-          parent_contract_id_value?: string | null;
+          parent_contract_id_value?: string;
           payment_rows?: Json;
           project_id_value: string;
           signed_at_value: string;
@@ -1523,7 +1933,7 @@ export type Database = {
           method_value: string;
           notes_value: string;
           project_id_value: string;
-          vendor_id_value: string | null;
+          vendor_id_value: string;
         };
         Returns: string;
       };
@@ -1531,9 +1941,40 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Database["public"]["Enums"]["user_role"];
       };
-      mark_overdue_events: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
+      decide_approval: {
+        Args: {
+          approval_id_value: string;
+          decision_reason_value?: string;
+          decision_value: Database["public"]["Enums"]["approval_status"];
+        };
+        Returns: undefined;
+      };
+      mark_overdue_events: { Args: Record<PropertyKey, never>; Returns: number };
+      request_vendor_selection: {
+        Args: {
+          board_resolution_value: string;
+          selection_reason_value: string;
+          target_project_id: string;
+          target_vendor_id: string;
+        };
+        Returns: string;
+      };
+      save_vendor_with_sensitive: {
+        Args: {
+          address_value?: string;
+          bank_account_value?: string;
+          bank_name_value?: string;
+          biz_no_value?: string;
+          category_value?: string;
+          ceo_value?: string;
+          homepage_value?: string;
+          internal_note_value?: string;
+          memo_value?: string;
+          name_value?: string;
+          status_value?: Database["public"]["Enums"]["vendor_status"];
+          vendor_id_value?: string;
+        };
+        Returns: string;
       };
       select_project_vendor: {
         Args: {
@@ -1544,12 +1985,19 @@ export type Database = {
         };
         Returns: undefined;
       };
-      verify_daily_reminder_token: {
-        Args: { input_token: string };
-        Returns: boolean;
+      submit_contract_approval: {
+        Args: {
+          target_id_value: string;
+          target_type_value: Database["public"]["Enums"]["approval_target_type"];
+        };
+        Returns: string;
       };
+      verify_daily_reminder_token: { Args: { input_token: string }; Returns: boolean };
     };
     Enums: {
+      approval_status: "draft" | "requested" | "approved" | "rejected" | "cancelled";
+      approval_target_type: "vendor_selection" | "contract" | "contract_amendment";
+      erp_sync_status: "pending" | "sent" | "failed";
       event_status: "예정" | "진행" | "완료" | "지연";
       event_type:
         | "견적마감"
@@ -1563,12 +2011,7 @@ export type Database = {
         | "보증만료"
         | "후속조치"
         | "기타";
-      project_category:
-        | "사업관리"
-        | "토지"
-        | "홍보관·사무실"
-        | "광고·홍보"
-        | "기타";
+      project_category: "사업관리" | "토지" | "홍보관·사무실" | "광고·홍보" | "기타";
       project_stage:
         | "견적요청"
         | "비교검토"
@@ -1580,14 +2023,7 @@ export type Database = {
         | "보류";
       settlement_status: "미정산" | "정산요청" | "정산완료";
       user_role: "admin" | "executive" | "staff" | "agent" | "viewer";
-      vendor_status:
-        | "후보"
-        | "견적중"
-        | "선정"
-        | "계약중"
-        | "완료"
-        | "탈락"
-        | "거래중지";
+      vendor_status: "후보" | "견적중" | "선정" | "계약중" | "완료" | "탈락" | "거래중지";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1597,34 +2033,27 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<
-  keyof Database,
-  "public"
->];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -1635,14 +2064,12 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
@@ -1660,14 +2087,12 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
@@ -1685,14 +2110,12 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -1702,14 +2125,12 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
@@ -1718,6 +2139,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      approval_status: ["draft", "requested", "approved", "rejected", "cancelled"],
+      approval_target_type: ["vendor_selection", "contract", "contract_amendment"],
+      erp_sync_status: ["pending", "sent", "failed"],
       event_status: ["예정", "진행", "완료", "지연"],
       event_type: [
         "견적마감",
@@ -1732,34 +2156,11 @@ export const Constants = {
         "후속조치",
         "기타",
       ],
-      project_category: [
-        "사업관리",
-        "토지",
-        "홍보관·사무실",
-        "광고·홍보",
-        "기타",
-      ],
-      project_stage: [
-        "견적요청",
-        "비교검토",
-        "선정",
-        "계약",
-        "진행",
-        "준공",
-        "정산완료",
-        "보류",
-      ],
+      project_category: ["사업관리", "토지", "홍보관·사무실", "광고·홍보", "기타"],
+      project_stage: ["견적요청", "비교검토", "선정", "계약", "진행", "준공", "정산완료", "보류"],
       settlement_status: ["미정산", "정산요청", "정산완료"],
       user_role: ["admin", "executive", "staff", "agent", "viewer"],
-      vendor_status: [
-        "후보",
-        "견적중",
-        "선정",
-        "계약중",
-        "완료",
-        "탈락",
-        "거래중지",
-      ],
+      vendor_status: ["후보", "견적중", "선정", "계약중", "완료", "탈락", "거래중지"],
     },
   },
 } as const;

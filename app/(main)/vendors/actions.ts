@@ -35,7 +35,12 @@ async function getActor() {
 
   const { data: role, error: roleError } = await supabase.rpc("current_role");
   if (roleError || !role) {
-    return { error: "사용자 권한을 확인할 수 없어.", supabase: null, userId: null, role: null } as const;
+    return {
+      error: "사용자 권한을 확인할 수 없어.",
+      supabase: null,
+      userId: null,
+      role: null,
+    } as const;
   }
 
   return { error: null, supabase, userId, role } as const;
@@ -66,44 +71,24 @@ export async function saveVendor(input: VendorInput): Promise<VendorActionResult
   }
 
   const values = parsed.data;
-  const payload = {
-    name: values.name,
-    biz_no: nullable(values.biz_no),
-    ceo: nullable(values.ceo),
-    address: nullable(values.address),
-    category: values.category,
-    homepage: nullable(values.homepage),
-    bank_name: nullable(values.bank_name),
-    bank_account: nullable(values.bank_account),
-    status: values.status,
-    memo: nullable(values.memo),
-    internal_note: nullable(values.internal_note),
-  };
-
-  if (values.id) {
-    const { data, error } = await actor.supabase
-      .from("vendors")
-      .update(payload)
-      .eq("id", values.id)
-      .is("deleted_at", null)
-      .select("id")
-      .single();
-
-    if (error) return { ok: false, message: databaseMessage(error.message) };
-    revalidatePath("/vendors");
-    revalidatePath(`/vendors/${values.id}`);
-    return { ok: true, message: "업체 정보를 수정했어.", id: data.id };
-  }
-
-  const { data, error } = await actor.supabase
-    .from("vendors")
-    .insert({ ...payload, created_by: actor.userId })
-    .select("id")
-    .single();
-
-  if (error) return { ok: false, message: databaseMessage(error.message) };
+  const { data, error } = await actor.supabase.rpc("save_vendor_with_sensitive", {
+    vendor_id_value: values.id ?? undefined,
+    name_value: values.name,
+    biz_no_value: values.biz_no,
+    ceo_value: values.ceo,
+    address_value: values.address,
+    category_value: values.category,
+    homepage_value: values.homepage,
+    status_value: values.status,
+    memo_value: values.memo,
+    bank_name_value: values.bank_name,
+    bank_account_value: values.bank_account,
+    internal_note_value: values.internal_note,
+  });
+  if (error || !data) return { ok: false, message: databaseMessage(error?.message ?? "") };
   revalidatePath("/vendors");
-  return { ok: true, message: "업체를 등록했어.", id: data.id };
+  revalidatePath(`/vendors/${data}`);
+  return { ok: true, message: values.id ? "업체 정보를 수정했어." : "업체를 등록했어.", id: data };
 }
 
 export async function saveVendorContact(input: VendorContactInput): Promise<VendorActionResult> {
@@ -158,15 +143,20 @@ export async function saveVendorContact(input: VendorContactInput): Promise<Vend
   return { ok: true, message: values.id ? "담당자 정보를 수정했어." : "담당자를 추가했어." };
 }
 
-export async function deactivateVendorContact(contactId: string, vendorId: string): Promise<VendorActionResult> {
+export async function deactivateVendorContact(
+  contactId: string,
+  vendorId: string,
+): Promise<VendorActionResult> {
   const parsed = vendorContactSchema.pick({ id: true, vendor_id: true }).safeParse({
     id: contactId,
     vendor_id: vendorId,
   });
-  if (!parsed.success || !parsed.data.id) return { ok: false, message: "담당자 정보가 올바르지 않아." };
+  if (!parsed.success || !parsed.data.id)
+    return { ok: false, message: "담당자 정보가 올바르지 않아." };
 
   const actor = await getActor();
-  if (actor.error || !actor.supabase) return { ok: false, message: actor.error ?? "로그인이 필요해." };
+  if (actor.error || !actor.supabase)
+    return { ok: false, message: actor.error ?? "로그인이 필요해." };
 
   const { error } = await actor.supabase
     .from("vendor_contacts")
@@ -207,7 +197,9 @@ export async function createContactLog(input: ContactLogInput): Promise<VendorAc
   return { ok: true, message: "연락 이력을 등록했어." };
 }
 
-export async function createVendorDocument(input: DocumentMetadataInput): Promise<VendorActionResult> {
+export async function createVendorDocument(
+  input: DocumentMetadataInput,
+): Promise<VendorActionResult> {
   const parsed = documentMetadataSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "문서 정보를 확인해 줘." };
@@ -250,11 +242,15 @@ export async function createVendorDocument(input: DocumentMetadataInput): Promis
   return { ok: true, message: "서류를 등록했어.", id: data.id };
 }
 
-export async function getDocumentDownloadUrl(documentId: string): Promise<VendorActionResult & { url?: string }> {
-  if (!/^[-0-9a-f]{36}$/i.test(documentId)) return { ok: false, message: "문서 정보가 올바르지 않아." };
+export async function getDocumentDownloadUrl(
+  documentId: string,
+): Promise<VendorActionResult & { url?: string }> {
+  if (!/^[-0-9a-f]{36}$/i.test(documentId))
+    return { ok: false, message: "문서 정보가 올바르지 않아." };
 
   const actor = await getActor();
-  if (actor.error || !actor.supabase) return { ok: false, message: actor.error ?? "로그인이 필요해." };
+  if (actor.error || !actor.supabase)
+    return { ok: false, message: actor.error ?? "로그인이 필요해." };
 
   const { data: document, error } = await actor.supabase
     .from("documents")

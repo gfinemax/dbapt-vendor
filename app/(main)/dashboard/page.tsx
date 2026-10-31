@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   const { monday, sunday } = kstDateParts();
   const [projectsResult, contractsResult, paymentsResult, weekEventsResult, overdueResult, quotesResult, meetingsResult] = await Promise.all([
     projectQuery,
-    supabase.from("contracts").select("id,project_id,amount,vat").is("deleted_at", null),
+    supabase.from("contracts").select("id,project_id,amount,vat").is("parent_contract_id", null).eq("approval_status", "approved").is("deleted_at", null),
     supabase.from("payment_schedules").select("contract_id,amount,paid_at,settlement_status").is("deleted_at", null),
     supabase.from("events").select("id,project_id,title,date,type,status").gte("date", monday).lte("date", sunday).is("deleted_at", null).order("date"),
     supabase.from("events").select("id,project_id,title,date,type,status").eq("status", "지연").is("deleted_at", null).order("date"),

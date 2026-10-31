@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
-select plan(10);
+select plan(11);
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -27,6 +27,9 @@ select is((select count(*) from public.events where id = '90000000-0000-0000-000
 delete from public.events where id = '90000000-0000-0000-0000-000000000007';
 select is((select count(*) from public.events where id = '90000000-0000-0000-0000-000000000007'), 0::bigint, 'admin can permanently delete an unreferenced event');
 select ok((select count(*) > 0 from public.audit_logs where table_name in ('users','project_assignees','events')), 'admin changes are recorded in audit logs');
+create temporary table audit_count_before as select count(*) as count from public.audit_logs;
+delete from public.audit_logs;
+select is((select count(*) from public.audit_logs), (select count from audit_count_before), 'audit logs are append-only even for admin');
 
 reset role;
 set local role authenticated;

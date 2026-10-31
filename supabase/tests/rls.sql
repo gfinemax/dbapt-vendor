@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(17);
+select plan(20);
 
 -- Agent: only assigned projects are visible through the safe view.
 set local role authenticated;
@@ -20,9 +20,11 @@ select is(
   0::bigint,
   'agent cannot see an unassigned project'
 );
-select is((select count(*) from public.projects), 0::bigint, 'agent cannot bypass the safe projects view');
+select is((select count(*) from public.projects), 2::bigint, 'agent can read assigned non-sensitive project rows directly');
 select is((select count(*) from public.vendors_public), 4::bigint, 'agent sees vendors linked to assigned projects');
-select is((select count(*) from public.vendors), 0::bigint, 'agent cannot read vendor internal notes from the base table');
+select is((select count(*) from public.vendors), 4::bigint, 'agent can read linked non-sensitive vendor rows directly');
+select is((select count(*) from public.vendor_internal_notes), 0::bigint, 'agent cannot read vendor internal notes');
+select is((select count(*) from public.vendor_financial_details), 0::bigint, 'agent cannot read vendor financial details');
 
 -- Viewer: all active rows through safe views, no sensitive base-table access.
 reset role;
@@ -35,7 +37,8 @@ select set_config(
 
 select is((select public.current_role())::text, 'viewer', 'viewer role resolves from public.users');
 select is((select count(*) from public.projects_public), 10::bigint, 'viewer sees all active projects');
-select is((select count(*) from public.projects), 0::bigint, 'viewer cannot read project internal notes from the base table');
+select is((select count(*) from public.projects), 10::bigint, 'viewer can read active non-sensitive project rows');
+select is((select count(*) from public.project_internal_notes), 0::bigint, 'viewer cannot read project internal notes');
 select is(
   (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'projects_public' and column_name = 'internal_note'),
   0::bigint,

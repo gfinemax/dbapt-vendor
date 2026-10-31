@@ -1,5 +1,6 @@
 import {
   BriefcaseBusiness,
+  BadgeCheck,
   Building2,
   CalendarDays,
   ClipboardList,
@@ -17,6 +18,7 @@ export const navigationItems = [
   { href: "/vendors", label: "용역사", icon: Building2 },
   { href: "/quotes", label: "견적 비교", icon: TableProperties },
   { href: "/contracts", label: "계약", icon: FileSignature },
+  { href: "/approvals", label: "승인함", icon: BadgeCheck },
   { href: "/meetings", label: "협의록", icon: Handshake },
   { href: "/schedule", label: "일정", icon: CalendarDays },
   { href: "/settings", label: "설정", icon: Settings },

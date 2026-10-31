@@ -15,7 +15,7 @@ select set_config(
 select is((select public.current_role())::text, 'admin', 'admin role is active for vendor workflow');
 
 insert into public.vendors (
-  id, name, biz_no, ceo, category, status, internal_note, created_by
+  id, name, biz_no, ceo, category, status, created_by
 ) values (
   '90000000-0000-0000-0000-000000000001',
   'Phase 2 검증업체',
@@ -23,6 +23,12 @@ insert into public.vendors (
   '검증 대표',
   '검증',
   '후보',
+  '00000000-0000-0000-0000-000000000001'
+);
+
+insert into public.vendor_internal_notes (vendor_id, content, created_by)
+values (
+  '90000000-0000-0000-0000-000000000001',
   'agent와 viewer에게 숨길 검증 메모',
   '00000000-0000-0000-0000-000000000001'
 );
