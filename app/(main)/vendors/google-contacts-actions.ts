@@ -12,10 +12,10 @@ import {
 } from "@/lib/google/contacts";
 import { getActor } from "@/lib/supabase/actor";
 
-const syncSchema = z.object({
-  contactId: z.string().uuid(),
-  vendorId: z.string().uuid(),
-});
+const databaseUuid = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+);
+const syncSchema = z.object({ contactId: databaseUuid, vendorId: databaseUuid });
 
 export type GoogleContactSyncResult = { ok: boolean; message: string };
 
@@ -136,11 +136,11 @@ export async function syncVendorContactToGoogle(input: {
   }
 }
 
-export async function syncVendorContactFromForm(formData: FormData): Promise<void> {
-  const parsed = syncSchema.safeParse({
-    contactId: formData.get("contactId"),
-    vendorId: formData.get("vendorId"),
-  });
+export async function syncVendorContactFromForm(
+  contactId: string,
+  vendorId: string,
+): Promise<void> {
+  const parsed = syncSchema.safeParse({ contactId, vendorId });
   if (!parsed.success) redirect("/vendors?googleSync=failed");
 
   const result = await syncVendorContactToGoogle(parsed.data);
